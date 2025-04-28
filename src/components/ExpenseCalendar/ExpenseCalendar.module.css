@@ -1,0 +1,120 @@
+.expenseCalendar {
+  padding: 24px;
+  background-color: #fff;
+}
+
+.expenseEvent {
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.expenseEvent:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.expense {
+  background-color: #fff1f0;
+  border-left: 3px solid #f5222d;
+}
+
+.income {
+  background-color: #f6ffed;
+  border-left: 3px solid #52c41a;
+}
+
+.formContainer {
+  margin-top: 24px;
+}
+
+.filterBar {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.statsCard {
+  margin-bottom: 24px;
+  text-align: center;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
+  transition: all 0.3s;
+}
+
+.statsCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.dateCell {
+  position: relative;
+  height: 80px;
+  padding: 4px 8px;
+}
+
+.dateCell:hover {
+  background-color: #f0f2f5;
+}
+
+.dateHasEvents {
+  position: relative;
+}
+
+.dateHasEvents::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: #1890ff;
+}
+
+.eventAmount {
+  font-weight: bold;
+}
+
+.eventAmount.negative {
+  color: #ff4d4f;
+}
+
+.eventAmount.positive {
+  color: #52c41a;
+}
+
+.totalExpense {
+  color: #ff4d4f;
+}
+
+.totalIncome {
+  color: #52c41a;
+}
+
+.totalBalance {
+  font-weight: bold;
+}
+
+.addButton {
+  margin-bottom: 16px;
+}
+
+.noEvents {
+  text-align: center;
+  padding: 16px;
+  color: #999;
+}
+
+.categoryTag {
+  margin: 0 4px 4px 0;
+}
+
+.captionRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+} 

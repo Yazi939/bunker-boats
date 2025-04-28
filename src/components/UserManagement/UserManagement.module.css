@@ -1,0 +1,13 @@
+.userManagement {
+  padding: 24px;
+}
+
+.roleTag {
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .userManagement {
+    padding: 12px;
+  }
+} 

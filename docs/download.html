@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bunker Boats - Скачать приложение</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            color: #0066cc;
+        }
+        .logo {
+            max-width: 200px;
+            margin-bottom: 20px;
+        }
+        .download-button {
+            display: inline-block;
+            background-color: #0066cc;
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 10px;
+            font-size: 18px;
+        }
+        .download-button:hover {
+            background-color: #0055aa;
+        }
+        .download-button.secondary {
+            background-color: #28a745;
+        }
+        .download-button.secondary:hover {
+            background-color: #218838;
+        }
+        .note {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #666;
+        }
+        .installation-steps {
+            margin-top: 30px;
+            text-align: left;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .installation-steps h3 {
+            margin-top: 0;
+        }
+        code {
+            background-color: #f1f1f1;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: Consolas, monospace;
+        }
+    </style>
+</head>
+<body>
+    <img src="https://raw.githubusercontent.com/Yazi939/application/master/public/bunker-boats-logo.png" alt="Bunker Boats Logo" class="logo">
+    <h1>Установка Bunker Boats</h1>
+    <p>Выберите компоненты для установки:</p>
+    
+    <div>
+        <a href="https://github.com/Yazi939/application/archive/refs/heads/master.zip" class="download-button">Скачать исходный код (ZIP)</a>
+        <a href="https://github.com/Yazi939/application/raw/master/optimize_build.bat" class="download-button secondary" download>Скачать скрипт установки</a>
+    </div>
+    
+    <div class="installation-steps">
+        <h3>Инструкции по установке:</h3>
+        <ol>
+            <li>Скачайте исходный код (ZIP) и распакуйте его в любую папку</li>
+            <li>Скачайте скрипт установки и сохраните его в ту же папку</li>
+            <li>Запустите скрипт установки (optimize_build.bat)</li>
+            <li>Дождитесь завершения процесса - будет создан установщик</li>
+            <li>Запустите созданный файл BunkerBoats-Setup.exe</li>
+        </ol>
+        
+        <h3>Альтернативный способ (требуется Node.js):</h3>
+        <ol>
+            <li>Убедитесь, что у вас установлен <a href="https://nodejs.org/" target="_blank">Node.js</a></li>
+            <li>Скачайте и распакуйте ZIP с исходным кодом</li>
+            <li>Откройте командную строку в папке с распакованным кодом</li>
+            <li>Выполните команду: <code>npm install</code></li>
+            <li>После установки зависимостей выполните: <code>npm start</code></li>
+        </ol>
+    </div>
+    
+    <p class="note">
+        Подробная инструкция доступна в 
+        <a href="https://github.com/Yazi939/application/blob/master/README.md">README.md</a>
+    </p>
+    
+    <p class="note">
+        <a href="https://github.com/Yazi939/application">Вернуться к репозиторию</a> | 
+        <a href="index.html">На главную</a>
+    </p>
+</body>
+</html> 

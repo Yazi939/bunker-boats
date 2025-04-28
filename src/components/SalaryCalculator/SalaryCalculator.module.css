@@ -1,0 +1,28 @@
+.salaryCalculator {
+  padding: 24px;
+  background-color: #fff;
+}
+
+.statsCard {
+  transition: all 0.3s;
+}
+
+.statsCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.addButton {
+  margin-bottom: 16px;
+}
+
+.filterBar {
+  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.captainSelect {
+  width: 200px;
+} 

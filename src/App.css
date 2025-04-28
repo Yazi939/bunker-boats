@@ -1,0 +1,730 @@
+.white-icon {
+  color: white !important;
+}
+
+.logo {
+  height: 64px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  margin: 16px 0;
+}
+
+/* Sidebar styles */
+.main-sidebar {
+  position: relative;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+}
+
+.main-sidebar .ant-menu {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 72px;
+}
+
+.sidebar-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: inherit;
+  padding: 16px 0;
+  text-align: center;
+  background: #001529;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 1;
+}
+
+.collapse-button {
+  color: white;
+  width: 100%;
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: transparent;
+  border: none;
+}
+
+.collapse-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.site-header {
+  background: #001529 !important;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  z-index: 1;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.site-title {
+  margin: 0;
+  font-size: 18px;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.mobile-menu-button {
+  display: none;
+  margin-right: 12px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 0 12px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.user-info:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.username {
+  display: flex;
+  flex-direction: column;
+  margin-left: 8px;
+  line-height: 1.2;
+  color: white;
+}
+
+.user-role {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.site-content {
+  background: #f0f2f5;
+  min-height: calc(100vh - 64px);
+}
+
+/* Responsive styles */
+@media (max-width: 992px) {
+  .mobile-menu-button {
+    display: block;
+  }
+  
+  .main-sidebar {
+    display: none;
+  }
+  
+  .site-title {
+    font-size: 16px;
+  }
+  
+  .username {
+    display: none;
+  }
+}
+
+@media (max-width: 576px) {
+  .site-header {
+    padding: 0 12px;
+  }
+  
+  .site-title {
+    font-size: 14px;
+  }
+}
+
+/* Add transition to site-layout */
+.site-layout {
+  transition: margin-left 0.2s ease;
+}
+
+.collapse-trigger:hover {
+  opacity: 1 !important;
+}
+
+.collapse-trigger {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 1000;
+} 
+
+/* Адаптивные стили для больших экранов (1200px и выше) */
+@media (min-width: 1200px) {
+  .main-sidebar {
+    width: 256px !important;
+  }
+  
+  .site-layout {
+    margin-left: 256px !important;
+  }
+  
+  .logo span {
+    font-size: 20px;
+  }
+}
+
+/* Адаптивные стили для средних экранов (992px - 1199px) */
+@media (max-width: 1199px) and (min-width: 992px) {
+  .main-sidebar {
+    width: 220px !important;
+  }
+  
+  .site-layout {
+    margin-left: 220px !important;
+  }
+  
+  .logo span {
+    font-size: 18px;
+  }
+  
+  .ant-menu-item {
+    padding: 0 16px !important;
+  }
+}
+
+/* Адаптивные стили для планшетов (768px - 991px) */
+@media (max-width: 991px) and (min-width: 768px) {
+  .main-sidebar {
+    width: 200px !important;
+  }
+  
+  .site-layout {
+    margin-left: 200px !important;
+  }
+  
+  .logo span {
+    font-size: 16px;
+  }
+  
+  .ant-menu-item {
+    padding: 0 12px !important;
+  }
+  
+  .site-header {
+    padding: 0 16px;
+  }
+}
+
+/* Адаптивные стили для мобильных устройств (до 767px) */
+@media (max-width: 767px) {
+  .main-sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+    position: fixed;
+    z-index: 1000;
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .main-sidebar.ant-layout-sider-collapsed {
+    transform: translateX(0);
+  }
+
+  .site-layout {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .mobile-menu-button {
+    display: block;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 1001;
+  }
+
+  .logo {
+    height: 48px;
+    margin: 8px 0;
+    padding: 0 16px;
+  }
+
+  .site-header {
+    padding: 0 12px;
+    height: 64px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+  }
+
+  .ant-layout-content {
+    padding: 12px !important;
+    margin-top: 64px !important;
+  }
+
+  .sidebar-footer {
+    width: 100%;
+    padding: 12px 0;
+  }
+
+  .ant-menu-item {
+    padding: 0 16px !important;
+    height: 48px !important;
+    line-height: 48px !important;
+  }
+
+  /* Оверлей для мобильного меню */
+  .mobile-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease;
+  }
+
+  .mobile-menu-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+/* Адаптивные стили для маленьких мобильных устройств (до 480px) */
+@media (max-width: 480px) {
+  .site-header {
+    padding: 0 8px;
+  }
+
+  .logo {
+    height: 40px;
+    margin: 4px 0;
+  }
+
+  .ant-layout-content {
+    padding: 8px !important;
+  }
+
+  .ant-menu-item {
+    padding: 0 12px !important;
+    height: 40px !important;
+    line-height: 40px !important;
+  }
+
+  .user-info {
+    padding: 0 8px;
+  }
+
+  .ant-btn {
+    padding: 0 8px;
+    height: 32px;
+    font-size: 12px;
+  }
+}
+
+/* Адаптивные стили для панели управления */
+@media (max-width: 767px) {
+  .ant-card {
+    margin-bottom: 16px;
+  }
+
+  .ant-card-head {
+    padding: 0 12px;
+  }
+
+  .ant-card-body {
+    padding: 12px;
+  }
+
+  .ant-table {
+    font-size: 12px;
+  }
+
+  .ant-form-item {
+    margin-bottom: 16px;
+  }
+
+  .ant-input,
+  .ant-select,
+  .ant-picker {
+    width: 100% !important;
+  }
+
+  .ant-modal {
+    width: 90% !important;
+    margin: 0 auto;
+  }
+
+  .ant-modal-content {
+    padding: 16px;
+  }
+
+  .ant-btn {
+    padding: 0 8px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .ant-btn-icon-only {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* Общие стили для контента */
+.ant-layout-content {
+  min-height: calc(100vh - 64px);
+  padding: 24px;
+  background: #f0f2f5;
+}
+
+/* Стили для мобильного меню */
+.mobile-menu-button {
+  display: none;
+  color: white;
+  font-size: 20px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+}
+
+@media (max-width: 767px) {
+  .mobile-menu-button {
+    display: block;
+  }
+}
+
+/* Стили для оверлея */
+.mobile-menu-overlay {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .mobile-menu-overlay {
+    display: block;
+  }
+}
+
+/* Стили для панели управления и карточек */
+.ant-card {
+  margin-bottom: 24px;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.ant-card-head {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 16px 24px;
+}
+
+.ant-card-body {
+  padding: 24px;
+}
+
+/* Адаптивные стили для мобильных устройств */
+@media (max-width: 767px) {
+  .ant-layout-content {
+    padding: 12px !important;
+    margin-top: 64px !important;
+  }
+
+  .ant-card {
+    margin-bottom: 12px;
+    border-radius: 4px;
+  }
+
+  .ant-card-head {
+    padding: 12px;
+    font-size: 16px;
+  }
+
+  .ant-card-body {
+    padding: 12px;
+  }
+
+  /* Стили для статистических карточек */
+  .statistics-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .statistic-item {
+    padding: 12px;
+    text-align: center;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  .statistic-title {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.45);
+    margin-bottom: 4px;
+  }
+
+  .statistic-value {
+    font-size: 20px;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.85);
+  }
+
+  .statistic-suffix {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.45);
+    margin-left: 4px;
+  }
+
+  /* Стили для графиков и таблиц */
+  .ant-table-wrapper {
+    margin: 0 -12px;
+    overflow-x: auto;
+  }
+
+  .ant-table {
+    font-size: 12px;
+  }
+
+  .ant-table-cell {
+    padding: 8px !important;
+  }
+
+  /* Стили для форм */
+  .ant-form-item {
+    margin-bottom: 12px;
+  }
+
+  .ant-form-item-label {
+    padding: 0 0 4px;
+  }
+
+  .ant-input,
+  .ant-select,
+  .ant-picker {
+    height: 32px;
+  }
+
+  /* Стили для кнопок действий */
+  .action-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .ant-btn {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 14px;
+  }
+}
+
+/* Стили для очень маленьких экранов */
+@media (max-width: 375px) {
+  .ant-layout-content {
+    padding: 8px !important;
+  }
+
+  .ant-card-head {
+    padding: 8px;
+    font-size: 14px;
+  }
+
+  .ant-card-body {
+    padding: 8px;
+  }
+
+  .statistic-value {
+    font-size: 16px;
+  }
+
+  .ant-table {
+    font-size: 11px;
+  }
+
+  .ant-table-cell {
+    padding: 6px !important;
+  }
+}
+
+/* Стили для панели управления расходом топлива */
+.dashboard-container {
+  padding: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.fuel-management-panel {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.fuel-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.fuel-stat-item {
+  background: #f5f5f5;
+  padding: 16px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.fuel-stat-title {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.65);
+  margin-bottom: 8px;
+}
+
+.fuel-stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1890ff;
+  line-height: 1.2;
+}
+
+.fuel-stat-change {
+  font-size: 12px;
+  color: #52c41a;
+  margin-top: 4px;
+}
+
+.fuel-stat-change.negative {
+  color: #f5222d;
+}
+
+.statistics-card {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.chart-card {
+  height: 100%;
+}
+
+.table-card {
+  margin-bottom: 24px;
+}
+
+.table-toolbar {
+  margin-bottom: 16px;
+}
+
+/* Адаптивные стили */
+@media (max-width: 1200px) {
+  .dashboard-container {
+    padding: 12px;
+  }
+
+  .fuel-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .statistics-card {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .dashboard-container {
+    padding: 8px;
+  }
+
+  .fuel-management-panel {
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+
+  .fuel-stats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .fuel-stat-item {
+    padding: 12px;
+  }
+
+  .fuel-stat-value {
+    font-size: 20px;
+  }
+
+  .table-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .table-toolbar .ant-space {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .table-toolbar .ant-picker {
+    width: 100%;
+  }
+
+  .table-toolbar .ant-select {
+    width: 100% !important;
+  }
+
+  .table-toolbar .ant-btn {
+    width: 100%;
+  }
+
+  .ant-table {
+    font-size: 12px;
+  }
+
+  .ant-table-cell {
+    padding: 8px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-container {
+    padding: 4px;
+  }
+
+  .fuel-management-panel {
+    padding: 8px;
+    margin-bottom: 12px;
+  }
+
+  .fuel-stat-item {
+    padding: 8px;
+  }
+
+  .fuel-stat-value {
+    font-size: 18px;
+  }
+
+  .ant-table {
+    font-size: 11px;
+  }
+
+  .ant-table-cell {
+    padding: 6px !important;
+  }
+}

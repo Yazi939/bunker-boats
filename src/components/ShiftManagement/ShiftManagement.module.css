@@ -1,0 +1,25 @@
+.shiftManagement {
+  padding: 24px;
+}
+
+.addShiftCard {
+  margin-bottom: 16px;
+}
+
+.statsCard {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 992px) {
+  .statsCard {
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .shiftManagement {
+    padding: 12px;
+  }
+} 

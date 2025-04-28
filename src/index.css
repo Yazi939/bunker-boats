@@ -1,0 +1,208 @@
+:root {
+  --primary-color: #1890ff;
+  --primary-color-rgb: 24, 144, 255;
+  --text-color: rgba(0, 0, 0, 0.85);
+  --background-color: #ffffff;
+  --secondary-background: #f0f2f5;
+  --border-color: #f0f0f0;
+  --success-color: #52c41a;
+  --error-color: #cf1322;
+}
+
+[data-theme='dark'] {
+  --primary-color: #177ddc;
+  --primary-color-rgb: 23, 125, 220;
+  --text-color: rgba(255, 255, 255, 0.85);
+  --background-color: #141414;
+  --secondary-background: #1f1f1f;
+  --border-color: #303030;
+  --success-color: #49aa19;
+  --error-color: #a61d24;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+.ant-layout {
+  min-height: 100vh;
+  background: var(--background-color);
+}
+
+.ant-layout-sider {
+  background-color: #001529 !important;
+}
+
+.ant-menu.ant-menu-dark {
+  background-color: #001529 !important;
+}
+
+.ant-card {
+  background: var(--secondary-background);
+  border-color: var(--border-color);
+}
+
+.ant-statistic-title {
+  color: var(--text-color);
+}
+
+.ant-statistic-content {
+  color: var(--text-color);
+}
+
+.chart-container {
+  background: var(--secondary-background);
+  border-radius: 2px;
+  padding: 24px;
+}
+
+.heatmap {
+  background: var(--secondary-background);
+  border-radius: 2px;
+  padding: 16px;
+}
+
+.connector-chart {
+  background: var(--secondary-background);
+  border-radius: 2px;
+  padding: 16px;
+}
+
+.logo {
+  height: 32px;
+  margin: 16px;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Дополнительные стили для темной темы */
+[data-theme='dark'] .ant-table {
+  background: var(--secondary-background);
+}
+
+[data-theme='dark'] .ant-table-thead > tr > th {
+  background: var(--secondary-background);
+  color: var(--text-color);
+}
+
+[data-theme='dark'] .ant-table-tbody > tr > td {
+  border-color: var(--border-color);
+}
+
+[data-theme='dark'] .ant-card-head {
+  border-color: var(--border-color);
+}
+
+[data-theme='dark'] .recharts-cartesian-grid-horizontal line,
+[data-theme='dark'] .recharts-cartesian-grid-vertical line {
+  stroke: var(--border-color);
+}
+
+[data-theme='dark'] .recharts-text {
+  fill: var(--text-color);
+}
+
+/* Стили для тепловой карты */
+.heatmap table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.heatmap th,
+.heatmap td {
+  border: 1px solid var(--border-color);
+  padding: 8px;
+  text-align: center;
+}
+
+.heatmap th {
+  background: var(--secondary-background);
+  color: var(--text-color);
+}
+
+/* Стили для круговой диаграммы */
+.connector-chart .legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.connector-chart .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.connector-chart .legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.success-icon {
+  color: var(--success-color);
+}
+
+.error-icon {
+  color: var(--error-color);
+}
+
+/* Стили для иконок в сайдбаре */
+.sidebar-icon {
+  font-size: 18px;
+  min-width: 24px;
+  margin-right: 10px;
+}
+
+/* Улучшение видимости ссылок в сайдбаре */
+.ant-menu-item {
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-size: 16px !important;
+}
+
+.ant-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.ant-menu-item-selected {
+  background-color: #1890ff !important;
+}
+
+.ant-menu-item-selected .sidebar-icon,
+.ant-menu-item-selected span {
+  color: white !important;
+}
+
+.ant-layout-sider-children {
+  background-color: #001529 !important;
+}
+
+/* Логотип в сайдбаре */
+.sidebar-logo {
+  height: 32px;
+  margin: 16px;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-weight: bold;
+  border-radius: 4px;
+} 

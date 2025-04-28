@@ -1,0 +1,53 @@
+.expenses-calendar {
+  margin: 20px;
+}
+
+.expenses-calendar .ant-card-head {
+  background: #f0f2f5;
+}
+
+.expenses-calendar .ant-calendar {
+  width: 100%;
+  border: none;
+}
+
+.calendar-cell {
+  padding: 4px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.calendar-cell .transactions-count {
+  font-weight: bold;
+  color: #1890ff;
+}
+
+.calendar-cell .transactions-volume {
+  color: #52c41a;
+}
+
+.calendar-cell .transactions-cost {
+  color: #faad14;
+}
+
+.ant-calendar-date {
+  height: auto !important;
+  min-height: 100px;
+}
+
+.ant-calendar-date-content {
+  height: auto !important;
+}
+
+.ant-modal-body {
+  padding: 16px;
+}
+
+.ant-table-small .ant-table-thead > tr > th {
+  background: #f0f2f5;
+  font-weight: 600;
+}
+
+.ant-tag {
+  margin-right: 0;
+} 

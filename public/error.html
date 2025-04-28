@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ошибка - Bunker Boats</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #343a40;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+        .error-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 {
+            color: #dc3545;
+            margin-bottom: 1rem;
+        }
+        p {
+            margin: 1rem 0;
+            line-height: 1.5;
+        }
+        .help-text {
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+            text-align: left;
+        }
+        .reload-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 1rem;
+        }
+        .reload-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1>Ошибка загрузки приложения</h1>
+        <p>Не удалось подключиться к серверу разработки Vite.</p>
+        
+        <div class="help-text">
+            <p><strong>Возможные причины:</strong></p>
+            <ul>
+                <li>Сервер разработки Vite не запущен</li>
+                <li>Сервер запущен, но не отвечает</li>
+                <li>Проблемы с сетевым подключением</li>
+            </ul>
+            
+            <p><strong>Что делать:</strong></p>
+            <ul>
+                <li>Проверьте, что сервер разработки запущен</li>
+                <li>Проверьте файл electron_log.txt для получения дополнительной информации</li>
+                <li>Попробуйте перезапустить приложение</li>
+            </ul>
+        </div>
+        
+        <button class="reload-btn" onclick="window.location.reload()">Перезагрузить страницу</button>
+    </div>
+</body>
+</html> 

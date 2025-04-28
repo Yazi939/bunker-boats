@@ -1,0 +1,50 @@
+.orders {
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.headerActions {
+  display: flex;
+  gap: 16px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.spanFull {
+  grid-column: span 2;
+}
+
+@media (max-width: 768px) {
+  .orders {
+    padding: 12px;
+  }
+  
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .headerActions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .spanFull {
+    grid-column: span 1;
+  }
+} 

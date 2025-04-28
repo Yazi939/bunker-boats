@@ -1,0 +1,237 @@
+.preloader-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #001529 0%, #002140 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  transition: opacity 0.8s ease-out, visibility 0.8s ease-out;
+}
+
+.app-name {
+  color: white;
+  font-size: 40px;
+  font-weight: bold;
+  margin-bottom: 40px;
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px rgba(24, 144, 255, 0.6);
+  opacity: 0;
+  animation: fadeIn 1s forwards;
+}
+
+.fuel-drop {
+  position: relative;
+  width: 100px;
+  height: 130px;
+  margin-bottom: 40px;
+}
+
+.drop-body {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #1890ff;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  box-shadow: 0 0 20px rgba(24, 144, 255, 0.6);
+  overflow: hidden;
+  animation: pulse 2s infinite alternate;
+}
+
+.wave {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 200%;
+  height: 200%;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 38%;
+  transform: translate(-25%, 0) rotate(0);
+  animation: wave 5s linear infinite;
+}
+
+.drop-shadow {
+  position: absolute;
+  bottom: -15px;
+  left: 15%;
+  width: 70%;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  animation: shadow 2s infinite alternate;
+}
+
+/* Fuel Gauge styles */
+.fuel-gauge {
+  width: 300px;
+  margin: 0 0 30px 0;
+  text-align: center;
+}
+
+.gauge-body {
+  position: relative;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+.gauge-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #52c41a, #1890ff);
+  width: 0%;
+  border-radius: 10px;
+  transition: width 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.gauge-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shine 2s infinite;
+}
+
+.gauge-cover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+.gauge-text {
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.loading-text {
+  display: flex;
+  margin: 20px 0;
+}
+
+.loading-text span {
+  color: white;
+  font-size: 20px;
+  letter-spacing: 2px;
+  font-weight: bold;
+  font-family: 'Arial', sans-serif;
+  animation: fadeInOut 1.5s infinite;
+}
+
+.loading-text span:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.loading-text span:nth-child(3) {
+  animation-delay: 0.2s;
+}
+.loading-text span:nth-child(4) {
+  animation-delay: 0.3s;
+}
+.loading-text span:nth-child(5) {
+  animation-delay: 0.4s;
+}
+.loading-text span:nth-child(6) {
+  animation-delay: 0.5s;
+}
+.loading-text span:nth-child(7) {
+  animation-delay: 0.6s;
+}
+.loading-text span:nth-child(8) {
+  animation-delay: 0.7s;
+}
+.loading-text span:nth-child(9) {
+  animation-delay: 0.8s;
+}
+.loading-text span:nth-child(10) {
+  animation-delay: 0.9s;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 20px rgba(24, 144, 255, 0.6);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 30px rgba(24, 144, 255, 0.8);
+  }
+}
+
+@keyframes wave {
+  0% {
+    transform: translate(-25%, 0) rotate(0);
+  }
+  100% {
+    transform: translate(-25%, 0) rotate(360deg);
+  }
+}
+
+@keyframes shadow {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+}
+
+@keyframes fadeInOut {
+  0%, 100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.fade-out {
+  opacity: 0;
+  visibility: hidden;
+} 

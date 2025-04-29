@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "description": "Fuel management application",
   "author": "Your Name",
-  "type": "module",
   "main": "src/main/main.cjs",
   "scripts": {
     "dev": "vite",
@@ -12,34 +11,53 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "electron:dev": "cross-env NODE_ENV=development electron .",
-    "electron:build": "electron-builder",
+    "electron:build": "electron-builder --win --x64 --publish never",
     "start": "cross-env NODE_ENV=development concurrently \"npm run dev\" \"wait-on http://localhost:5176 && npm run electron:dev\"",
     "server": "cd server && npm start",
     "start:all": "concurrently \"npm run start\" \"npm run server\"",
     "pack": "electron-builder --dir",
     "dist": "npm run build && electron-builder --dir",
-    "package": "electron-builder --win --x64",
+    "package": "npm run build && electron-builder --win --x64 --publish never",
     "package:mac": "electron-builder --mac",
     "make-exe": "npm run build && npm run package",
     "postinstall": "electron-builder install-app-deps",
     "test": "echo \"No tests specified\" && exit 0",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "clean": "rimraf dist release build",
+    "publish": "node scripts/publish.js"
   },
   "build": {
-    "appId": "com.bunkerboats.app",
-    "productName": "Bunker Boats",
+    "appId": "com.fuel.manager",
+    "productName": "FUEL Manager",
     "directories": {
       "output": "release"
     },
     "files": [
       "dist/**/*",
-      "package.json"
+      "src/main/**/*",
+      "src/preload.cjs"
     ],
     "asar": true,
     "compression": "maximum",
+    "publish": {
+      "provider": "github",
+      "owner": "Yazi939",
+      "repo": "bunker-boats",
+      "private": false,
+      "releaseType": "release"
+    },
     "win": {
-      "target": "nsis",
-      "icon": "assets/icon.png"
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/bunker-logo.jpg",
+      "signAndEditExecutable": false,
+      "verifyUpdateCodeSignature": false
     },
     "mac": {
       "target": [
@@ -51,21 +69,16 @@
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Bunker Boats",
-      "include": "installer.nsh",
-      "perMachine": true,
-      "artifactName": "BunkerBoats-Setup.exe",
-      "installerIcon": "assets/icon.png",
-      "uninstallerIcon": "assets/icon.png",
-      "installerHeaderIcon": "assets/icon.png"
-    },
-    "nsisWeb": {
-      "additionalConfigurations": {
-        "include": "installer.nsh"
-      }
+      "shortcutName": "FUEL Manager",
+      "uninstallDisplayName": "FUEL Manager",
+      "installerIcon": "public/bunker-logo.jpg",
+      "uninstallerIcon": "public/bunker-logo.jpg",
+      "installerHeaderIcon": "public/bunker-logo.jpg",
+      "deleteAppDataOnUninstall": true
     }
   },
   "dependencies": {
@@ -84,8 +97,9 @@
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "dayjs": "^1.11.10",
-    "electron": "^28.0.0",
+    "electron-log": "^5.3.4",
     "electron-store": "^8.1.0",
+    "electron-updater": "^6.6.2",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.0",
@@ -110,6 +124,7 @@
     "@typescript-eslint/eslint-plugin": "^7.0.2",
     "@typescript-eslint/parser": "^7.0.2",
     "@vitejs/plugin-react": "^4.2.0",
+    "electron": "^28.0.0",
     "electron-builder": "^24.9.1",
     "eslint": "^8.55.0",
     "eslint-plugin-react-hooks": "^4.6.0",

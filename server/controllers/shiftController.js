@@ -1,77 +1,23 @@
-const Shift = require('../models/Shift');
+const { Shift } = require('../models/initModels');
+const { User } = require('../models/initModels');
+const { Vehicle } = require('../models/initModels');
 
 // @desc    Получение всех смен
 // @route   GET /api/shifts
 // @access  Private
 exports.getShifts = async (req, res) => {
   try {
-    let query;
-    
-    // Копируем req.query
-    const reqQuery = { ...req.query };
-    
-    // Поля для исключения
-    const removeFields = ['select', 'sort', 'page', 'limit'];
-    
-    // Удаляем поля из запроса
-    removeFields.forEach(param => delete reqQuery[param]);
-    
-    // Создаем строку запроса
-    let queryStr = JSON.stringify(reqQuery);
-    
-    // Создаем операторы ($gt, $gte, и т.д.)
-    queryStr = queryStr.replace(/\b(gt|gte|lt|lte|in)\b/g, match => `$${match}`);
-    
-    // Поиск смен
-    query = Shift.find(JSON.parse(queryStr));
-    
-    // Выбор полей
-    if (req.query.select) {
-      const fields = req.query.select.split(',').join(' ');
-      query = query.select(fields);
-    }
-    
-    // Сортировка
-    if (req.query.sort) {
-      const sortBy = req.query.sort.split(',').join(' ');
-      query = query.sort(sortBy);
-    } else {
-      query = query.sort('-timestamp');
-    }
-    
-    // Пагинация
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 25;
-    const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
-    const total = await Shift.countDocuments(JSON.parse(queryStr));
-    
-    query = query.skip(startIndex).limit(limit);
-    
-    // Выполнение запроса
-    const shifts = await query;
-    
-    // Объект пагинации
-    const pagination = {};
-    
-    if (endIndex < total) {
-      pagination.next = {
-        page: page + 1,
-        limit
-      };
-    }
-    
-    if (startIndex > 0) {
-      pagination.prev = {
-        page: page - 1,
-        limit
-      };
-    }
+    const shifts = await Shift.findAll({
+      where: req.query,
+      include: [
+        { model: User, as: 'user' },
+        { model: Vehicle, as: 'vehicle' }
+      ]
+    });
     
     res.status(200).json({
       success: true,
       count: shifts.length,
-      pagination,
       data: shifts
     });
   } catch (error) {
@@ -87,7 +33,12 @@ exports.getShifts = async (req, res) => {
 // @access  Private
 exports.getShift = async (req, res) => {
   try {
-    const shift = await Shift.findById(req.params.id);
+    const shift = await Shift.findByPk(req.params.id, {
+      include: [
+        { model: User, as: 'user' },
+        { model: Vehicle, as: 'vehicle' }
+      ]
+    });
     
     if (!shift) {
       return res.status(404).json({
@@ -115,7 +66,7 @@ exports.createShift = async (req, res) => {
   try {
     // Добавляем пользователя к смене
     if (req.user) {
-      req.body.user = req.user.id;
+      req.body.userId = req.user.id;
     }
     
     const shift = await Shift.create(req.body);
@@ -137,7 +88,7 @@ exports.createShift = async (req, res) => {
 // @access  Private
 exports.updateShift = async (req, res) => {
   try {
-    let shift = await Shift.findById(req.params.id);
+    const shift = await Shift.findByPk(req.params.id);
     
     if (!shift) {
       return res.status(404).json({
@@ -147,17 +98,14 @@ exports.updateShift = async (req, res) => {
     }
     
     // Проверка владельца смены или админа
-    if (shift.user && shift.user.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (shift.userId !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         error: 'У вас нет прав для обновления этой смены'
       });
     }
     
-    shift = await Shift.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true
-    });
+    await shift.update(req.body);
     
     res.status(200).json({
       success: true,
@@ -176,7 +124,7 @@ exports.updateShift = async (req, res) => {
 // @access  Private
 exports.deleteShift = async (req, res) => {
   try {
-    const shift = await Shift.findById(req.params.id);
+    const shift = await Shift.findByPk(req.params.id);
     
     if (!shift) {
       return res.status(404).json({
@@ -186,14 +134,14 @@ exports.deleteShift = async (req, res) => {
     }
     
     // Проверка владельца смены или админа
-    if (shift.user && shift.user.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (shift.userId !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         error: 'У вас нет прав для удаления этой смены'
       });
     }
     
-    await shift.deleteOne();
+    await shift.destroy();
     
     res.status(200).json({
       success: true,

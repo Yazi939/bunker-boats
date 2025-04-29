@@ -1,4 +1,4 @@
-const FuelTransaction = require('../models/FuelTransaction');
+const { FuelTransaction } = require('../models/initModels');
 
 // @desc    Получение всех транзакций
 // @route   GET /api/fuel

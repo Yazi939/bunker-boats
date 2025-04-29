@@ -42,7 +42,6 @@ import { ArrowUpOutlined, ArrowDownOutlined, ReloadOutlined, FileExcelOutlined, 
 import dayjs from 'dayjs';
 import { getCurrentUser, checkPermission } from '../../utils/users';
 import styles from './Dashboard.module.css';
-import { ipcRenderer } from 'electron';
 import type { AntdIconProps } from '@ant-design/icons/lib/components/AntdIcon';
 import type { Dayjs } from 'dayjs';
 import type { RangeValue } from 'rc-picker/lib/interface';

@@ -7,6 +7,7 @@ import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
 import { exportFuelDataToExcel } from '../../utils/excelExport';
 import type { FuelTransaction } from '../../types/electron';
+import { fuelService } from '../../services/api';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -58,19 +59,28 @@ const FuelTrading: React.FC = () => {
   const [transactionToDelete, setTransactionToDelete] = useState<FuelTransaction | null>(null);
   
   // Разрешённые типы операций для учёта топлива
-  const allowedTypes = ['purchase', 'sale', 'base_to_bunker', 'bunker_to_base'];
+  const allowedTypes = ['purchase', 'sale', 'base_to_bunker', 'bunker_to_base', 'drain'];
 
-  // Загрузка данных из electron-store при первой загрузке
+  // Загрузка данных из fuelService при первой загрузке
   useEffect(() => {
     const loadTransactions = async () => {
       try {
-        const result = await window.electronAPI.transactions.getAll();
-        const fuelTransactions = result.filter(t => allowedTypes.includes(t.type));
+        const response = await fuelService.getTransactions();
+        // Исправлено: поддержка разных форматов ответа
+        let result: FuelTransaction[] = [];
+        if (Array.isArray(response.data)) {
+          result = response.data;
+        } else if (response.data && Array.isArray(response.data.data)) {
+          result = response.data.data;
+        } else {
+          result = [];
+        }
+        const fuelTransactions = result.filter((t: FuelTransaction) => allowedTypes.includes(t.type));
         setTransactions(fuelTransactions);
         // Set last key based on the highest existing key
-        const maxKey = fuelTransactions.reduce((max, t) => {
-          const keyNum = parseInt(t.key.replace('transaction-', ''));
-          return Math.max(max, keyNum);
+        const maxKey = fuelTransactions.reduce((max: number, t: FuelTransaction) => {
+          const keyNum = parseInt((t.key || '').replace('transaction-', ''));
+          return Math.max(max, isNaN(keyNum) ? 0 : keyNum);
         }, 0);
         setLastKey(maxKey);
       } catch (error) {
@@ -84,22 +94,9 @@ const FuelTrading: React.FC = () => {
     loadTransactions();
   }, []);
   
-  // Обновление данных в electron-store при изменении
+  // Обновление данных в fuelService при изменении
   useEffect(() => {
-    const saveTransactions = async () => {
-      try {
-        await window.electronAPI.transactions.update(transactions);
-      } catch (error) {
-        console.error('Failed to save transactions:', error);
-        notification.error({
-          message: 'Ошибка сохранения',
-          description: 'Не удалось сохранить изменения'
-        });
-      }
-    };
-    if (transactions.length > 0) {
-      saveTransactions();
-    }
+    // Для REST API не нужно сохранять транзакции локально
   }, [transactions]);
   
   // Фильтрация транзакций
@@ -127,35 +124,35 @@ const FuelTrading: React.FC = () => {
   });
   
   // Фильтрация транзакций с учетом замороженных для расчетов
-  const activeTransactions = filteredTransactions.filter(t => !t.frozen);
+  const activeTransactions = filteredTransactions.filter((t: FuelTransaction) => !t.frozen);
   
   // Расчетные данные по активным транзакциям
   const totalPurchased = activeTransactions
-    .filter(t => t.type === 'purchase')
+    .filter((t: FuelTransaction) => t.type === 'purchase')
     .reduce((sum, t) => sum + t.volume, 0);
     
   const totalSold = activeTransactions
-    .filter(t => t.type === 'sale')
+    .filter((t: FuelTransaction) => t.type === 'sale')
     .reduce((sum, t) => sum + t.volume, 0);
   
   const totalDrained = activeTransactions
-    .filter(t => t.type === 'drain')
+    .filter((t: FuelTransaction) => t.type === 'drain')
     .reduce((sum, t) => sum + t.volume, 0);
     
   const totalPurchaseCost = activeTransactions
-    .filter(t => t.type === 'purchase')
+    .filter((t: FuelTransaction) => t.type === 'purchase')
     .reduce((sum, t) => sum + t.totalCost, 0);
     
   const totalSaleIncome = activeTransactions
-    .filter(t => t.type === 'sale')
+    .filter((t: FuelTransaction) => t.type === 'sale')
     .reduce((sum, t) => sum + t.totalCost, 0);
     
   const totalBaseToBunker = activeTransactions
-    .filter(t => t.type === 'base_to_bunker')
+    .filter((t: FuelTransaction) => t.type === 'base_to_bunker')
     .reduce((sum, t) => sum + t.volume, 0);
 
   const totalBunkerToBase = activeTransactions
-    .filter(t => t.type === 'bunker_to_base')
+    .filter((t: FuelTransaction) => t.type === 'bunker_to_base')
     .reduce((sum, t) => sum + t.volume, 0);
 
   const baseBalance = totalPurchased - totalSold - totalBaseToBunker + totalBunkerToBase;
@@ -180,16 +177,15 @@ const FuelTrading: React.FC = () => {
     : 0;
     
   // Данные по типам топлива
-  const fuelTypeData = FUEL_TYPES.map(fuelType => {
-    const fuelTransactions = filteredTransactions.filter(t => t.fuelType === fuelType.value);
-    const purchased = fuelTransactions.filter(t => t.type === 'purchase').reduce((sum, t) => sum + t.volume, 0);
-    const sold = fuelTransactions.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.volume, 0);
-    const drained = fuelTransactions.filter(t => t.type === 'drain').reduce((sum, t) => sum + t.volume, 0);
-    const baseToBunker = fuelTransactions.filter(t => t.type === 'base_to_bunker').reduce((sum, t) => sum + t.volume, 0);
-    const bunkerToBase = fuelTransactions.filter(t => t.type === 'bunker_to_base').reduce((sum, t) => sum + t.volume, 0);
-    const purchaseCost = fuelTransactions.filter(t => t.type === 'purchase').reduce((sum, t) => sum + t.totalCost, 0);
-    const saleIncome = fuelTransactions.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.totalCost, 0);
-    
+  const fuelTypeData: FuelTypeData[] = FUEL_TYPES.map(fuelType => {
+    const fuelTransactions = filteredTransactions.filter((t: FuelTransaction) => t.fuelType === fuelType.value);
+    const purchased = fuelTransactions.filter((t: FuelTransaction) => t.type === 'purchase').reduce((sum, t) => sum + t.volume, 0);
+    const sold = fuelTransactions.filter((t: FuelTransaction) => t.type === 'sale').reduce((sum, t) => sum + t.volume, 0);
+    const drained = fuelTransactions.filter((t: FuelTransaction) => t.type === 'drain').reduce((sum, t) => sum + t.volume, 0);
+    const baseToBunker = fuelTransactions.filter((t: FuelTransaction) => t.type === 'base_to_bunker').reduce((sum, t) => sum + t.volume, 0);
+    const bunkerToBase = fuelTransactions.filter((t: FuelTransaction) => t.type === 'bunker_to_base').reduce((sum, t) => sum + t.volume, 0);
+    const purchaseCost = fuelTransactions.filter((t: FuelTransaction) => t.type === 'purchase').reduce((sum, t) => sum + t.totalCost, 0);
+    const saleIncome = fuelTransactions.filter((t: FuelTransaction) => t.type === 'sale').reduce((sum, t) => sum + t.totalCost, 0);
     return {
       fuelType: fuelType.value,
       fuelName: fuelType.label,
@@ -201,7 +197,7 @@ const FuelTrading: React.FC = () => {
       purchaseCost,
       saleIncome,
       profit: sold * (purchased > 0 ? purchaseCost / purchased : 0) > 0 ? saleIncome - sold * (purchaseCost / purchased) : 0
-    } as FuelTypeData;
+    };
   }).filter(data => data.purchased > 0 || data.sold > 0 || data.drained > 0 || data.baseBalance > 0 || data.bunkerBalance > 0);
 
   const handleAddTransaction = async (values: any) => {
@@ -242,9 +238,11 @@ const FuelTrading: React.FC = () => {
     };
     
     try {
-      const updatedTransactions = await window.electronAPI.transactions.add(newTransaction);
-      // Фильтруем только allowedTypes
-      setTransactions(updatedTransactions.filter(t => allowedTypes.includes(t.type)));
+      await fuelService.createTransaction(newTransaction);
+      // После добавления — перезагружаем список
+      const response = await fuelService.getTransactions();
+      const updatedTransactions = response.data || [];
+      setTransactions(updatedTransactions.filter((t: FuelTransaction) => allowedTypes.includes(t.type)));
       setLastKey(lastKey + 1);
       form.resetFields();
       
@@ -268,8 +266,10 @@ const FuelTrading: React.FC = () => {
 
   const handleDeleteTransaction = async (key: string) => {
     try {
-      const updatedTransactions = await window.electronAPI.transactions.delete(key);
-      setTransactions(updatedTransactions.filter(t => allowedTypes.includes(t.type)));
+      await fuelService.deleteTransaction(key);
+      // После удаления — перезагружаем список
+      const response = await fuelService.getTransactions();
+      setTransactions((response.data || []).filter((t: FuelTransaction) => allowedTypes.includes(t.type)));
       notification.success({
         message: 'Транзакция удалена',
         description: 'Запись успешно удалена из истории операций'
@@ -356,8 +356,10 @@ const FuelTrading: React.FC = () => {
         };
         
         try {
-          const updatedTransactions = await window.electronAPI.transactions.update(updatedTransaction);
-          setTransactions(updatedTransactions.filter(t => allowedTypes.includes(t.type)));
+          await fuelService.updateTransaction(updatedTransaction);
+          // После изменения — перезагружаем список
+          const response = await fuelService.getTransactions();
+          setTransactions(response.data || []);
           setEditModalVisible(false);
           setEditingTransaction(null);
           editForm.resetFields();
@@ -410,8 +412,10 @@ const FuelTrading: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (!transactionToDelete) return;
     try {
-      const updatedTransactions = await window.electronAPI.transactions.delete(transactionToDelete.key);
-      setTransactions(updatedTransactions.filter(t => allowedTypes.includes(t.type)));
+      await fuelService.deleteTransaction(transactionToDelete.key);
+      // После удаления — перезагружаем список
+      const response = await fuelService.getTransactions();
+      setTransactions((response.data || []).filter((t: FuelTransaction) => allowedTypes.includes(t.type)));
       setDeleteModalVisible(false);
       setTransactionToDelete(null);
       notification.success({

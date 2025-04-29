@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Data = require('../models/Data');
+const { Data } = require('../models/initModels');
 const auth = require('../middleware/auth');
 
 // Получение данных для синхронизации

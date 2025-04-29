@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const { User } = require('../models/initModels');
 
 // Защита маршрутов
 exports.protect = async (req, res, next) => {
@@ -26,7 +26,7 @@ exports.protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Получаем пользователя по ID из токена
-    req.user = await User.findById(decoded.id);
+    req.user = await User.findByPk(decoded.id);
     next();
   } catch (err) {
     return res.status(401).json({

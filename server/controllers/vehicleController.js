@@ -1,4 +1,4 @@
-const Vehicle = require('../models/Vehicle');
+const { Vehicle } = require('../models/initModels');
 
 // @desc    Получение всех ТС
 // @route   GET /api/vehicles

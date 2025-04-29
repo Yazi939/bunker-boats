@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, Card, Typography } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import { loginUser } from '../../utils/users';
+import { authService } from '../../services/api';
 import './Login.css';
 
 const { Title } = Typography;
@@ -14,18 +14,28 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const onFinish = (values: { username: string; password: string }) => {
+  const onFinish = async (values: { email: string; password: string }) => {
     setLoading(true);
     setError('');
-
-    const user = loginUser(values.username, values.password);
-    
-    if (user) {
-      onLoginSuccess(user);
-    } else {
-      setError('Неверный логин или пароль');
+    try {
+      // Логин через сервер
+      const response = await authService.login(values.email, values.password);
+      if (response.data && response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        // Получаем пользователя с сервера
+        const me = await authService.getMe();
+        if (me.data && me.data.user) {
+          localStorage.setItem('currentUser', JSON.stringify(me.data.user));
+          onLoginSuccess(me.data.user);
+        } else {
+          setError('Ошибка получения данных пользователя');
+        }
+      } else {
+        setError('Неверный логин или пароль');
+      }
+    } catch (e) {
+      setError('Ошибка авторизации');
     }
-    
     setLoading(false);
   };
 
@@ -39,13 +49,14 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           autoComplete="off"
         >
           <Form.Item
-            name="username"
-            rules={[{ required: true, message: 'Пожалуйста, введите логин' }]}
+            name="email"
+            rules={[{ required: true, message: 'Пожалуйста, введите email' }]}
           >
             <Input 
               prefix={<span className="login-icon"><UserOutlined /></span>} 
-              placeholder="Логин" 
+              placeholder="Email" 
               size="large"
+              type="email"
             />
           </Form.Item>
 

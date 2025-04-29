@@ -2,38 +2,30 @@ const { app, BrowserWindow, ipcMain, session } = require('electron');
 const path = require('path');
 const isDev = process.env.NODE_ENV === 'development';
 const Store = require('electron-store');
+const { setupAutoUpdater } = require('./updater');
 
 // Инициализация хранилища
 const store = new Store();
 
+// Замени строку с localhost на реальный IP сервера
+// Например, если сервер работает на 89.169.170.164:5000, то:
+// const API_URL = 'http://localhost:5000';
+const API_URL = 'http://89.169.170.164:5000';
+
 function createWindow() {
-  // Настройка Content Security Policy
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [
-          isDev 
-            ? "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:*;" +
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:*;" +
-              "style-src 'self' 'unsafe-inline' http://localhost:*;" +
-              "font-src 'self' data: http://localhost:*;" +
-              "img-src 'self' data: https: http://localhost:*;" +
-              "connect-src 'self' ws://localhost:* http://localhost:* wss://localhost:*;" +
-              "worker-src 'self' blob: http://localhost:*;" +
-              "frame-src 'self'"
-            : "default-src 'self';" +
-              "script-src 'self';" +
-              "style-src 'self' 'unsafe-inline';" +
-              "font-src 'self' data:;" +
-              "img-src 'self' data: https:;" +
-              "connect-src 'self';" +
-              "worker-src 'self';" +
-              "frame-src 'self'"
-        ]
-      }
-    });
-  });
+  // Временно отключаем CSP для тестирования
+  // session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+  //   callback({
+  //     responseHeaders: {
+  //       ...details.responseHeaders,
+  //       'Content-Security-Policy': [
+  //         isDev
+  //           ? "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:* http://89.169.170.164:*; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:* ws://localhost:* http://89.169.170.164:*"
+  //           : "default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://89.169.170.164:*"
+  //       ]
+  //     }
+  //   });
+  // });
 
   const mainWindow = new BrowserWindow({
     width: 1200,
@@ -41,11 +33,13 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.cjs'),
-      sandbox: isDev ? false : true, // Отключаем sandbox в режиме разработки
-      webSecurity: true
+      preload: path.join(__dirname, '..', 'preload.cjs'),
+      sandbox: true
     }
   });
+
+  // Настраиваем автообновление
+  setupAutoUpdater(mainWindow);
 
   // В режиме разработки загружаем URL с Vite сервера
   if (isDev) {
@@ -111,12 +105,12 @@ function setupIPC() {
     const transactions = store.get('transactions', []);
     const newTransaction = {
       ...transaction,
-      id: Date.now(), // Simple ID generation
+      id: Date.now(),
       createdAt: new Date().toISOString()
     };
     transactions.push(newTransaction);
     store.set('transactions', transactions);
-    return transactions;
+    return newTransaction;
   });
 
   ipcMain.handle('transactions-update', async (_, transaction) => {
@@ -129,15 +123,16 @@ function setupIPC() {
         updatedAt: new Date().toISOString()
       };
       store.set('transactions', transactions);
+      return transactions[index];
     }
-    return transactions;
+    return null;
   });
 
-  ipcMain.handle('transactions-delete', async (_, key) => {
+  ipcMain.handle('transactions-delete', async (_, id) => {
     const transactions = store.get('transactions', []);
-    const filteredTransactions = transactions.filter(t => t.key !== key);
+    const filteredTransactions = transactions.filter(t => t.id !== id);
     store.set('transactions', filteredTransactions);
-    return filteredTransactions;
+    return true;
   });
 
   // Транспортные средства
@@ -149,12 +144,12 @@ function setupIPC() {
     const vehicles = store.get('vehicles', []);
     const newVehicle = {
       ...vehicle,
-      id: Date.now(), // Simple ID generation
+      id: Date.now(),
       createdAt: new Date().toISOString()
     };
     vehicles.push(newVehicle);
     store.set('vehicles', vehicles);
-    return vehicles;
+    return newVehicle;
   });
 
   ipcMain.handle('vehicles-update', async (_, vehicle) => {
@@ -167,15 +162,16 @@ function setupIPC() {
         updatedAt: new Date().toISOString()
       };
       store.set('vehicles', vehicles);
+      return vehicles[index];
     }
-    return vehicles;
+    return null;
   });
 
   ipcMain.handle('vehicles-delete', async (_, id) => {
     const vehicles = store.get('vehicles', []);
     const filteredVehicles = vehicles.filter(v => v.id !== id);
     store.set('vehicles', filteredVehicles);
-    return filteredVehicles;
+    return true;
   });
 
   // Данные

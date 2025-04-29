@@ -1,14 +1,15 @@
-const User = require('../models/User');
+const { User } = require('../models/initModels');
+const jwt = require('jsonwebtoken');
 
 // @desc    Регистрация пользователя
 // @route   POST /api/users/register
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { email, password, role } = req.body;
 
     // Проверка, существует ли пользователь
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ where: { username: email } });
     if (userExists) {
       return res.status(400).json({
         success: false,
@@ -18,10 +19,9 @@ exports.register = async (req, res) => {
 
     // Создание пользователя
     const user = await User.create({
-      name,
-      email,
+      username: email,
       password,
-      role: role || 'worker'
+      role: role || 'user'
     });
 
     sendTokenResponse(user, 201, res);
@@ -49,7 +49,11 @@ exports.login = async (req, res) => {
     }
 
     // Поиск пользователя с паролем
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ 
+      where: { username: email },
+      attributes: { include: ['password'] }
+    });
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -68,6 +72,7 @@ exports.login = async (req, res) => {
 
     sendTokenResponse(user, 200, res);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -80,7 +85,7 @@ exports.login = async (req, res) => {
 // @access  Private
 exports.getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findByPk(req.user.id);
     res.status(200).json({
       success: true,
       data: user
@@ -96,15 +101,18 @@ exports.getMe = async (req, res) => {
 // Создание и отправка токена в ответе
 const sendTokenResponse = (user, statusCode, res) => {
   // Создание токена
-  const token = user.getSignedJwtToken();
+  const token = jwt.sign(
+    { id: user.id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRE }
+  );
 
   res.status(statusCode).json({
     success: true,
     token,
     user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
+      id: user.id,
+      username: user.username,
       role: user.role
     }
   });

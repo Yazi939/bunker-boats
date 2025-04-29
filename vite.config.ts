@@ -30,18 +30,19 @@ export default defineConfig({
   server: {
     port: 5174,
     strictPort: true,
-    headers: {
-      'Content-Security-Policy': [
-        "default-src 'self' http://localhost:* ws://localhost:*",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-        "img-src 'self' data: blob: http://localhost:* https:",
-        "font-src 'self' data: https://fonts.gstatic.com",
-        "connect-src 'self' ws://localhost:* http://localhost:* https:",
-        "worker-src 'self' blob:",
-        "frame-src 'self'"
-      ].join('; ')
-    },
+    // Временно отключаем CSP для тестирования
+    // headers: {
+    //   'Content-Security-Policy': [
+    //     "default-src 'self' http://localhost:* ws://localhost:* http://89.169.170.164:*",
+    //     "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*",
+    //     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    //     "img-src 'self' data: blob: http://localhost:* https:",
+    //     "font-src 'self' data: https://fonts.gstatic.com",
+    //     "connect-src 'self' ws://localhost:* http://localhost:* http://89.169.170.164:* https:",
+    //     "worker-src 'self' blob:",
+    //     "frame-src 'self'"
+    //   ].join('; ')
+    // },
     watch: {
       usePolling: true,
       interval: 100

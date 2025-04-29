@@ -188,7 +188,7 @@ async function createWindow() {
             "style-src 'self' 'unsafe-inline' http://localhost:*;",
             "img-src 'self' data: http://localhost:* https:;",
             "font-src 'self' data: http://localhost:*;",
-            "connect-src 'self' http://localhost:* ws://localhost:*;"
+            "connect-src 'self' http://localhost:* ws://localhost:* http://89.169.170.164:5000;"
           ].join(' ')
         }
       });

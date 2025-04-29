@@ -8,7 +8,7 @@ import {
   MenuUnfoldOutlined, MenuFoldOutlined, DownOutlined
 } from '@ant-design/icons';
 import type { AntdIconProps } from '@ant-design/icons/lib/components/AntdIcon';
-import { initializeUsers, getCurrentUser, logoutUser } from './utils/users';
+import { authService } from './services/api';
 import Dashboard from './components/Dashboard/Dashboard';
 import FuelTrading from './components/FuelTrading/FuelTrading';
 import UserManagement from './components/UserManagement/UserManagement';
@@ -82,7 +82,7 @@ const userMenuItems: MenuItem[] = [
 const App: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [currentView, setCurrentView] = useState<string>('fuel');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showLoader, setShowLoader] = useState(false);
@@ -104,7 +104,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    let hideTimeout: NodeJS.Timeout;
+    let hideTimeout: NodeJS.Timeout | undefined;
 
     if (loading) {
       setShowLoader(true);
@@ -117,16 +117,33 @@ const App: React.FC = () => {
   }, [loading]);
 
   useEffect(() => {
-    const initApp = async () => {
-      await initializeUsers();
-      const user = await getCurrentUser();
-      if (user) {
-        setCurrentUser(user);
-        setIsLoggedIn(true);
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const me = await authService.getMe();
+          if (me.data && me.data.user) {
+            setCurrentUser(me.data.user);
+            setIsLoggedIn(true);
+          } else {
+            setCurrentUser(null);
+            setIsLoggedIn(false);
+            localStorage.removeItem('token');
+            localStorage.removeItem('currentUser');
+          }
+        } catch {
+          setCurrentUser(null);
+          setIsLoggedIn(false);
+          localStorage.removeItem('token');
+          localStorage.removeItem('currentUser');
+        }
+      } else {
+        setCurrentUser(null);
+        setIsLoggedIn(false);
       }
       setLoading(false);
     };
-    initApp();
+    checkAuth();
   }, []);
 
   const handleMenuClick: MenuProps['onClick'] = (e) => {
@@ -139,7 +156,8 @@ const App: React.FC = () => {
 
   const handleUserMenuClick: MenuProps['onClick'] = async (e) => {
     if (e.key === 'logout') {
-      await logoutUser();
+      localStorage.removeItem('token');
+      localStorage.removeItem('currentUser');
       setIsLoggedIn(false);
       setCurrentUser(null);
       setCurrentView('fuel');

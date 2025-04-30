@@ -36,9 +36,9 @@ const initApp = async () => {
     
     // Проверка на существование sequelize перед вызовом sync
     if (sequelize && typeof sequelize.sync === 'function') {
-      // Исключаем таблицу Users из альтерации, чтобы избежать ошибок с внешними ключами
-      await sequelize.sync({ alter: { exclude: ['Users'] } });
-      console.log('Модели синхронизированы с базой данных');
+      // Отключаем альтерацию полностью, чтобы избежать проблем с внешними ключами
+      await sequelize.sync({ alter: false });
+      console.log('Модели синхронизированы с базой данных без изменения структуры');
     } else {
       console.log('Предупреждение: sequelize не определен или не содержит метод sync');
     }

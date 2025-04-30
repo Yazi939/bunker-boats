@@ -270,6 +270,7 @@ Shift.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 Shift.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
 
 // Синхронизируем модели с базой данных
-sequelize.sync();
+// Закомментировано, так как синхронизация происходит в server.js
+// sequelize.sync();
 
 module.exports = { User, Vehicle, Shift, FuelTransaction, sequelize }; 

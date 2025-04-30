@@ -7,6 +7,7 @@ import type { ColumnsType } from 'antd/es/table';
 import type { FuelTransaction } from '../../types/electron';
 import { getCurrentUser } from '../../utils/users';
 import './ExpensesCalendar.css';
+import { fuelService } from '../../services/api';
 
 const { Text, Title } = Typography;
 const { RangePicker } = DatePicker;
@@ -90,28 +91,16 @@ const ExpensesCalendar: React.FC = () => {
   // Функция загрузки транзакций с сервера
   const loadTransactions = async () => {
     try {
-      console.log('Trying to fetch from server API...');
+      console.log('Trying to fetch transactions from API service...');
       try {
-        // Получаем данные с сервера
-        const response = await fetch('http://89.169.170.164:5000/api/fuel', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
+        // Используем fuelService вместо прямых fetch запросов
+        const result = await fuelService.getTransactions();
         
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`HTTP error! status: ${response.status}, details:`, errorText);
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const apiResponse = await response.json();
-        
-        if (apiResponse.success && Array.isArray(apiResponse.data)) {
-          console.log('Received transactions from server API:', apiResponse.data.length);
+        if (result && result.data && Array.isArray(result.data)) {
+          console.log('Received transactions from API service:', result.data.length);
           
           // Форматируем данные
-          const formattedData = apiResponse.data.map((t: Record<string, any>) => ({
+          const formattedData = result.data.map((t: Record<string, any>) => ({
             ...t,
             id: t.id,
             key: String(t.id || Math.random()),
@@ -120,11 +109,11 @@ const ExpensesCalendar: React.FC = () => {
           
           setTransactions(formattedData);
         } else {
-          console.error('Invalid API response format:', apiResponse);
+          console.error('Invalid API response format:', result);
           throw new Error('Invalid API response format');
         }
       } catch (apiError) {
-        console.error('Error fetching from server API:', apiError);
+        console.error('Error fetching from API service:', apiError);
         useMockData();
       }
     } catch (error) {
@@ -306,110 +295,70 @@ const ExpensesCalendar: React.FC = () => {
   // Обработчик добавления новой операции
   const handleAddOperation = async (values: any) => {
     try {
-      const { type, fuelType, volume, price, notes } = values;
+      console.log('Creating new operation:', values);
       
-      const date = selectedDate?.format('YYYY-MM-DD') || new Date().toISOString().split('T')[0];
-      const timestamp = new Date(date).getTime();
-      
-      let totalCost;
-      if (["expense", "salary", "repair"].includes(type)) {
-        totalCost = price;
-      } else {
-        totalCost = volume * price;
-      }
-      
-      // Убираем поля, которые не должны отправляться на сервер
+      // Формируем объект транзакции
       const newTransaction = {
-        type: type,
-        fuelType: fuelType || '',
-        volume: Number(volume) || 0,
-        price: Number(price) || 0,
-        totalCost: Number(totalCost),
-        date: date,
-        notes: notes || '',
+        ...values,
+        date: selectedDate.format('YYYY-MM-DD'),
+        timestamp: selectedDate.valueOf(),
+        totalCost: values.price * values.volume
       };
       
-      console.log('Creating new transaction:', newTransaction);
+      console.log('Prepared transaction data:', newTransaction);
       
-      try {
-        const response = await fetch('http://89.169.170.164:5000/api/fuel', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify(newTransaction)
-        });
+      // Отправляем запрос через сервис вместо fetch
+      const result = await fuelService.createTransaction(newTransaction);
+      
+      if (result && result.data) {
+        console.log('Transaction created successfully:', result.data);
         
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`HTTP error! status: ${response.status}, details:`, errorText);
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        // Обновляем состояние
+        const createdTransaction = {
+          ...result.data,
+          key: String(result.data.id || Math.random())
+        };
         
-        const result = await response.json();
-        console.log('Transaction created:', result);
-        
-        // Refresh transactions
-        await loadTransactions();
-        
-        message.success('Операция успешно добавлена');
-        setIsAddModalVisible(false);
-        form.resetFields();
-      } catch (error) {
-        console.error('Error creating transaction:', error);
-        message.error('Ошибка при добавлении операции');
+        setTransactions([...transactions, createdTransaction]);
+        message.success('Операция добавлена успешно');
+      } else {
+        console.error('Failed to create transaction:', result);
+        message.error('Ошибка при создании операции');
       }
+      
+      setIsModalVisible(false);
     } catch (error) {
-      console.error('Error in handleAddOperation:', error);
-      message.error('Произошла ошибка при добавлении операции');
+      console.error('Error creating transaction:', error);
+      message.error('Ошибка при создании операции');
     }
   };
 
   // Обработчик удаления операции
-  const handleDeleteOperation = async (operationKey: string) => {
+  const handleDeleteOperation = async (transaction: FuelTransaction) => {
     try {
-      const transaction = transactions.find(t => t.key === operationKey);
-      if (!transaction) {
-        message.error('Операция не найдена');
+      console.log('Deleting operation:', transaction);
+      
+      if (!transaction.id) {
+        console.error('Transaction ID is missing');
+        message.error('Невозможно удалить операцию без ID');
         return;
       }
       
-      console.log('Deleting transaction:', transaction);
+      // Отправляем запрос через сервис вместо fetch
+      await fuelService.deleteTransaction(transaction.id);
       
-      try {
-        const response = await fetch(`http://89.169.170.164:5000/api/fuel/${transaction.id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        console.log('Transaction deleted:', result);
-        
-        // Refresh transactions
-        await loadTransactions();
-        
-        message.success('Операция успешно удалена');
-        
-        // Update selected transactions if modal is open
-        if (isModalVisible && selectedDate) {
-          const dateStr = selectedDate.format('YYYY-MM-DD');
-          const updatedDayTransactions = transactions.filter(t => t.date === dateStr && t.key !== operationKey);
-          setSelectedTransactions(updatedDayTransactions);
-        }
-      } catch (error) {
-        console.error('Error deleting transaction:', error);
-        message.error('Ошибка при удалении операции');
-      }
+      console.log('Transaction deleted successfully');
+      
+      // Обновляем состояние
+      setTransactions(transactions.filter(t => t.id !== transaction.id));
+      
+      // Обновляем список отображаемых транзакций
+      setSelectedTransactions(selectedTransactions.filter(t => t.id !== transaction.id));
+      
+      message.success('Операция удалена успешно');
     } catch (error) {
-      console.error('Error in handleDeleteOperation:', error);
-      message.error('Произошла ошибка при удалении операции');
+      console.error('Error deleting transaction:', error);
+      message.error('Ошибка при удалении операции');
     }
   };
 
@@ -481,7 +430,7 @@ const ExpensesCalendar: React.FC = () => {
             type="text" 
             danger 
             icon={<DeleteOutlined />}
-            onClick={() => handleDeleteOperation(record.key)}
+            onClick={() => handleDeleteOperation(record)}
             title="Удалить операцию"
           />
         )

@@ -8,8 +8,10 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  // Увеличиваем таймаут для запросов
-  timeout: 10000
+  // Увеличиваем таймаут для запросов и retry для сетевых ошибок
+  timeout: 15000,
+  retry: 2,
+  retryDelay: 1000
 });
 
 // Перехватчик для добавления токена авторизации

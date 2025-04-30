@@ -42,10 +42,13 @@ const initApp = async () => {
     // Middleware
     app.use(express.json());
     app.use(cors({
-      origin: '*', // разрешаем доступ с любого источника для тестирования
-      methods: ['GET', 'POST', 'PUT', 'DELETE'],
+      origin: ['http://89.169.170.164:5176', 'http://localhost:5176', '*'],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization']
     }));
+    
+    // Для предполетных запросов
+    app.options('*', cors());
     
     // Логирование запросов
     app.use(morgan('dev'));
@@ -109,9 +112,10 @@ const initApp = async () => {
     });
 
     const PORT = process.env.PORT || 5000;
+    const HOST = process.env.HOST || '0.0.0.0';
 
-    app.listen(PORT, () => {
-      console.log(`Сервер запущен на порту ${PORT}`);
+    app.listen(PORT, HOST, () => {
+      console.log(`Сервер запущен на ${HOST}:${PORT} и доступен извне`);
     });
   } catch (error) {
     console.error('Ошибка при инициализации приложения:', error);

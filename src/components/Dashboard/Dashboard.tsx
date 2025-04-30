@@ -678,6 +678,18 @@ const Dashboard: React.FC = () => {
         console.log('🚗 Updating vehicle using web API:', values);
         await window.api.vehicleService.updateVehicle(editingVehicle.id, values);
         message.success('Транспортное средство обновлено');
+        
+        // Обновляем локальный список после API-обновления
+        try {
+          const response = await window.api.vehicleService.getVehicles();
+          if (response && response.data) {
+            const updatedVehicles = Array.isArray(response.data) ? response.data : 
+                                   (response.data.data ? response.data.data : []);
+            setVehicles(updatedVehicles);
+          }
+        } catch (refreshError) {
+          console.warn('Unable to refresh vehicles from API:', refreshError);
+        }
       }
       // Приоритет 2: Пробуем использовать Electron API
       // @ts-ignore
@@ -688,6 +700,23 @@ const Dashboard: React.FC = () => {
           key: editingVehicle.key
         });
         message.success('Транспортное средство обновлено');
+        
+        // Обновляем локальный список
+        try {
+          // @ts-ignore
+          if (window.electronAPI?.vehicles?.getAll) {
+            // @ts-ignore
+            const updatedVehicles = await window.electronAPI.vehicles.getAll();
+            setVehicles(updatedVehicles);
+          // @ts-ignore
+          } else if (window.electronAPI?.getVehicles) {
+            // @ts-ignore
+            const updatedVehicles = await window.electronAPI.getVehicles();
+            setVehicles(updatedVehicles);
+          }
+        } catch (refreshError) {
+          console.warn('Unable to refresh vehicles from Electron API:', refreshError);
+        }
       // @ts-ignore
       } else if (window.electronAPI?.updateVehicle) {
         // @ts-ignore
@@ -696,27 +725,28 @@ const Dashboard: React.FC = () => {
           key: editingVehicle.key
         });
         message.success('Транспортное средство обновлено');
+        
+        // Обновляем локальный список
+        try {
+          // @ts-ignore
+          if (window.electronAPI?.getVehicles) {
+            // @ts-ignore
+            const updatedVehicles = await window.electronAPI.getVehicles();
+            setVehicles(updatedVehicles);
+          }
+        } catch (refreshError) {
+          console.warn('Unable to refresh vehicles from Electron API:', refreshError);
+        }
       } else {
-        message.info('API для обновления не найден, будет использована симуляция');
-        // Симулируем обновление в тестовых данных
-        // Это просто для демонстрации в случае отсутствия API
+        console.log('API не инициализирован, обновляем локально');
+        // Симулируем обновление в локальных данных
+        const updatedVehicles = vehicles.map(v => 
+          v.id === editingVehicle.id ? { ...v, ...values, key: v.key } : v
+        );
+        setVehicles(updatedVehicles);
+        message.info('Транспортное средство обновлено локально');
       }
       
-      // Получаем обновленный список ТС
-      let updatedVehicles;
-      // @ts-ignore
-      if (window.electronAPI?.vehicles?.getAll) {
-        // @ts-ignore
-        updatedVehicles = await window.electronAPI.vehicles.getAll();
-      // @ts-ignore
-      } else if (window.electronAPI?.getVehicles) {
-        // @ts-ignore
-        updatedVehicles = await window.electronAPI.getVehicles();
-      } else {
-        throw new Error('API транспортных средств не инициализирован');
-      }
-      
-      setVehicles(updatedVehicles);
       setIsEditModalVisible(false);
       setEditingVehicle(null);
     } catch (error) {
@@ -771,20 +801,23 @@ const Dashboard: React.FC = () => {
         await window.electronAPI.vehicles.add(newVehicle);
         
         // Получаем обновленный список ТС
-        let updatedVehicles;
-        // @ts-ignore
-        if (window.electronAPI?.vehicles?.getAll) {
+        try {
           // @ts-ignore
-          updatedVehicles = await window.electronAPI.vehicles.getAll();
-        // @ts-ignore
-        } else if (window.electronAPI?.getVehicles) {
+          if (window.electronAPI?.vehicles?.getAll) {
+            // @ts-ignore
+            const updatedVehicles = await window.electronAPI.vehicles.getAll();
+            setVehicles(updatedVehicles);
           // @ts-ignore
-          updatedVehicles = await window.electronAPI.getVehicles();
-        } else {
-          throw new Error('API транспортных средств не инициализирован');
+          } else if (window.electronAPI?.getVehicles) {
+            // @ts-ignore
+            const updatedVehicles = await window.electronAPI.getVehicles();
+            setVehicles(updatedVehicles);
+          }
+        } catch (refreshError) {
+          console.warn('Unable to refresh vehicles from Electron API:', refreshError);
+          // Добавляем ТС локально
+          setVehicles([...vehicles, newVehicle]);
         }
-        
-        setVehicles(updatedVehicles);
         message.success('Транспортное средство добавлено');
       // @ts-ignore
       } else if (window.electronAPI?.addVehicle) {
@@ -792,29 +825,28 @@ const Dashboard: React.FC = () => {
         await window.electronAPI.addVehicle(newVehicle);
         
         // Получаем обновленный список ТС
-        let updatedVehicles;
-        // @ts-ignore
-        if (window.electronAPI?.vehicles?.getAll) {
+        try {
           // @ts-ignore
-          updatedVehicles = await window.electronAPI.vehicles.getAll();
-        // @ts-ignore
-        } else if (window.electronAPI?.getVehicles) {
-          // @ts-ignore
-          updatedVehicles = await window.electronAPI.getVehicles();
-        } else {
-          throw new Error('API транспортных средств не инициализирован');
+          if (window.electronAPI?.getVehicles) {
+            // @ts-ignore
+            const updatedVehicles = await window.electronAPI.getVehicles();
+            setVehicles(updatedVehicles);
+          }
+        } catch (refreshError) {
+          console.warn('Unable to refresh vehicles from Electron API:', refreshError);
+          // Добавляем ТС локально
+          setVehicles([...vehicles, newVehicle]);
         }
-        
-        setVehicles(updatedVehicles);
         message.success('Транспортное средство добавлено');
       } else {
-        message.info('API для добавления не найден, будет использована симуляция');
+        console.log('API не инициализирован, добавляем локально');
         // Симулируем добавление в локальные данные
         const mockVehicle = {
           ...newVehicle,
-          id: `ТС-${Math.floor(Math.random() * 1000)}`
+          id: values.id || `ТС-${Math.floor(Math.random() * 1000)}`
         };
         setVehicles([...vehicles, mockVehicle]);
+        message.info('Транспортное средство добавлено локально');
       }
       
       setIsAddModalVisible(false);
@@ -861,20 +893,23 @@ const Dashboard: React.FC = () => {
             await window.electronAPI.vehicles.delete(id);
             
             // Получаем обновленный список ТС
-            let updatedVehicles;
-            // @ts-ignore
-            if (window.electronAPI?.vehicles?.getAll) {
+            try {
               // @ts-ignore
-              updatedVehicles = await window.electronAPI.vehicles.getAll();
-            // @ts-ignore
-            } else if (window.electronAPI?.getVehicles) {
+              if (window.electronAPI?.vehicles?.getAll) {
+                // @ts-ignore
+                const updatedVehicles = await window.electronAPI.vehicles.getAll();
+                setVehicles(updatedVehicles);
               // @ts-ignore
-              updatedVehicles = await window.electronAPI.getVehicles();
-            } else {
-              throw new Error('API транспортных средств не инициализирован');
+              } else if (window.electronAPI?.getVehicles) {
+                // @ts-ignore
+                const updatedVehicles = await window.electronAPI.getVehicles();
+                setVehicles(updatedVehicles);
+              }
+            } catch (refreshError) {
+              console.warn('Unable to refresh vehicles from Electron API:', refreshError);
+              // Удаляем ТС локально
+              setVehicles(vehicles.filter(v => v.id !== id));
             }
-            
-            setVehicles(updatedVehicles);
             message.success('Транспортное средство удалено');
           // @ts-ignore
           } else if (window.electronAPI?.deleteVehicle) {
@@ -882,25 +917,24 @@ const Dashboard: React.FC = () => {
             await window.electronAPI.deleteVehicle(id);
             
             // Получаем обновленный список ТС
-            let updatedVehicles;
-            // @ts-ignore
-            if (window.electronAPI?.vehicles?.getAll) {
+            try {
               // @ts-ignore
-              updatedVehicles = await window.electronAPI.vehicles.getAll();
-            // @ts-ignore
-            } else if (window.electronAPI?.getVehicles) {
-              // @ts-ignore
-              updatedVehicles = await window.electronAPI.getVehicles();
-            } else {
-              throw new Error('API транспортных средств не инициализирован');
+              if (window.electronAPI?.getVehicles) {
+                // @ts-ignore
+                const updatedVehicles = await window.electronAPI.getVehicles();
+                setVehicles(updatedVehicles);
+              }
+            } catch (refreshError) {
+              console.warn('Unable to refresh vehicles from Electron API:', refreshError);
+              // Удаляем ТС локально
+              setVehicles(vehicles.filter(v => v.id !== id));
             }
-            
-            setVehicles(updatedVehicles);
             message.success('Транспортное средство удалено');
           } else {
-            message.info('API для удаления не найден, удаляю локально');
-            // Если нет API, удаляем локально
+            console.log('API не инициализирован, удаляем локально');
+            // Симулируем удаление локально
             setVehicles(vehicles.filter(v => v.id !== id));
+            message.info('Транспортное средство удалено локально');
           }
         } catch (error) {
           console.error('Ошибка при удалении ТС:', error);

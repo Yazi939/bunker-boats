@@ -294,6 +294,32 @@ const Dashboard: React.FC = () => {
   const canEditVehicles = currentUser?.role === 'admin';
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [suppressErrors, setSuppressErrors] = useState<boolean>(false);
+
+  // Отключение показа ошибок API при инициализации
+  useEffect(() => {
+    const originalConsoleError = console.error;
+    
+    if (suppressErrors) {
+      console.error = (...args) => {
+        const errorMessage = args.join(' ');
+        if (
+          errorMessage.includes('API не инициализирован') || 
+          errorMessage.includes('API транспортных средств не инициализирован')
+        ) {
+          // Не выводим эти ошибки в консоль
+          return;
+        }
+        originalConsoleError(...args);
+      };
+    }
+    
+    setSuppressErrors(true);
+    
+    return () => {
+      console.error = originalConsoleError;
+    };
+  }, []);
 
   const iconProps = {
     className: "stat-icon",

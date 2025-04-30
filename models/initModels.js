@@ -248,8 +248,12 @@ Shift.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
 FuelTransaction.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 FuelTransaction.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
 
-// Синхронизируем модели с базой данных
-sequelize.sync();
+// Синхронизируем модели с базой данных с флагом alter для обновления структуры
+sequelize.sync({ alter: true }).then(() => {
+  console.log('✅ Database sync complete with alter: true');
+}).catch(err => {
+  console.error('❌ Database sync error:', err);
+});
 
 module.exports = {
     User,

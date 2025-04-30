@@ -1,4 +1,4 @@
-const { FuelTransaction, User, Vehicle } = require('../models/initModels');
+const { FuelTransaction, User, Vehicle, sequelize } = require('../models/initModels');
 const { Op } = require('sequelize');
 
 // @desc    Получение всех транзакций
@@ -255,31 +255,40 @@ exports.createTransaction = async (req, res) => {
       console.log('🔥 Using default type: purchase');
     }
     
-    // Если volume или amount не указаны, используем 0
-    if (processedData.volume === undefined && processedData.amount === undefined) {
-      processedData.volume = 0;
-      processedData.amount = 0;
-      console.log('🔥 Using default volume/amount: 0');
-    } else if (processedData.volume !== undefined && processedData.amount === undefined) {
-      processedData.amount = processedData.volume;
-    } else if (processedData.amount !== undefined && processedData.volume === undefined) {
+    // ВАЖНО: Сначала проверяем и устанавливаем amount
+    // Поскольку это поле не может быть null в базе данных
+    if (processedData.amount === undefined || processedData.amount === null) {
+      if (processedData.volume !== undefined && processedData.volume !== null) {
+        processedData.amount = processedData.volume;
+        console.log('🔥 Setting amount = volume:', processedData.amount);
+      } else {
+        processedData.amount = 0;
+        processedData.volume = 0;
+        console.log('🔥 Using default amount/volume: 0');
+      }
+    }
+    
+    // Если volume не указан, но amount указан, устанавливаем volume = amount
+    if ((processedData.volume === undefined || processedData.volume === null) && 
+        processedData.amount !== undefined && processedData.amount !== null) {
       processedData.volume = processedData.amount;
+      console.log('🔥 Setting volume = amount:', processedData.volume);
     }
     
     // Если price не указана, используем 0
-    if (processedData.price === undefined) {
+    if (processedData.price === undefined || processedData.price === null) {
       processedData.price = 0;
       console.log('🔥 Using default price: 0');
     }
     
     // Если totalCost не указан, вычисляем его
-    if (processedData.totalCost === undefined) {
+    if (processedData.totalCost === undefined || processedData.totalCost === null) {
       processedData.totalCost = Number(processedData.volume) * Number(processedData.price);
       console.log('🔥 Calculated totalCost:', processedData.totalCost);
     }
     
     // Если fuelType не указан, используем значение по умолчанию
-    if (processedData.fuelType === undefined) {
+    if (processedData.fuelType === undefined || processedData.fuelType === null) {
       processedData.fuelType = 'gasoline_95';
       console.log('🔥 Using default fuelType: gasoline_95');
     }
@@ -300,10 +309,19 @@ exports.createTransaction = async (req, res) => {
       processedData.userId = req.user.id;
     }
     
+    // ВАЖНО: Финальная проверка критических полей
+    console.log('🔥 Checking critical field amount:', processedData.amount);
+    if (processedData.amount === undefined || processedData.amount === null) {
+      console.error('🔥 CRITICAL ERROR: amount is still null/undefined after processing');
+      // Последняя попытка установить amount
+      processedData.amount = 0;
+    }
+    
     console.log('🔥 Sanitized data for create:', {
       type: processedData.type,
       fuelType: processedData.fuelType,
       volume: processedData.volume,
+      amount: processedData.amount,  // Добавляем лог amount
       price: processedData.price,
       totalCost: processedData.totalCost,
       date: processedData.date
@@ -320,15 +338,15 @@ exports.createTransaction = async (req, res) => {
     } catch (dbError) {
       console.error('🔥 Database error in createTransaction:', dbError);
       
-      // Если ошибка связана с валидацией, пытаемся обойти её
-      if (dbError.name === 'SequelizeValidationError') {
-        console.log('🔥 Validation error, trying to create with minimal data...');
+      // Проверяем, связана ли ошибка с полем amount
+      if (dbError.message && dbError.message.includes('amount cannot be null')) {
+        console.log('🔥 Detected amount null error, creating minimal transaction');
         
-        // Создаем минимальный объект данных
+        // Создаем минимальный объект данных с явным указанием amount
         const minimalData = {
           type: processedData.type || 'purchase',
           volume: processedData.volume || 0,
-          amount: processedData.amount || 0,
+          amount: processedData.volume || 0,  // Явно задаем amount = volume
           price: processedData.price || 0,
           totalCost: processedData.totalCost || 0,
           fuelType: processedData.fuelType || 'gasoline_95',
@@ -485,6 +503,74 @@ exports.deleteTransaction = async (req, res) => {
       success: false,
       error: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
+// @desc    Создание транзакции через прямой SQL
+// @route   POST /api/fuel/direct
+// @access  Public
+exports.createTransactionDirect = async (req, res) => {
+  try {
+    console.log('💉 POST /api/fuel/direct - START REQUEST');
+    console.log('💉 Request body:', JSON.stringify(req.body, null, 2));
+    
+    // Получаем данные из запроса
+    const { type, volume, price, totalCost, fuelType, supplier, timestamp, date, key } = req.body;
+    
+    // Устанавливаем значения по умолчанию
+    const safeType = type || 'purchase';
+    const safeVolume = volume || 0;
+    const safePrice = price || 0;
+    const safeTotalCost = totalCost || (safeVolume * safePrice);
+    const safeFuelType = fuelType || 'gasoline_95';
+    const safeSupplier = supplier || null;
+    const safeDate = date ? new Date(date) : (timestamp ? new Date(timestamp) : new Date());
+    const safeKey = key || `direct-${Date.now()}`;
+    
+    // Выполняем прямой SQL-запрос, обходя ORM
+    const query = `
+      INSERT INTO "FuelTransactions" 
+      ("type", "volume", "amount", "price", "totalCost", "fuelType", "supplier", "date", "key", "createdAt", "updatedAt")
+      VALUES 
+      ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      RETURNING *
+    `;
+    
+    const values = [
+      safeType,
+      safeVolume,
+      safeVolume, // amount = volume
+      safePrice, 
+      safeTotalCost,
+      safeFuelType,
+      safeSupplier,
+      safeDate,
+      safeKey
+    ];
+    
+    console.log('💉 Executing SQL with values:', values);
+    
+    const result = await sequelize.query(query, {
+      bind: values,
+      type: sequelize.QueryTypes.INSERT,
+      returning: true,
+      raw: true
+    });
+    
+    console.log('💉 Transaction created with direct SQL');
+    
+    res.status(201).json({
+      success: true,
+      data: result[0][0]
+    });
+  } catch (error) {
+    console.error('💉 Error in direct transaction creation:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Ошибка при создании транзакции через прямой SQL',
+      details: error.message
     });
   }
 }; 

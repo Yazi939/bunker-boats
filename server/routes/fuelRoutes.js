@@ -3,6 +3,7 @@ const {
   getTransactions,
   getTransaction,
   createTransaction,
+  createTransactionDirect,
   updateTransaction,
   deleteTransaction
 } = require('../controllers/fuelController');
@@ -16,6 +17,9 @@ router.get('/debug', getTransactions);
 
 // Добавляем маршрут для тестирования POST запросов
 router.post('/debug', createTransaction);
+
+// Добавляем маршрут для прямого создания транзакций
+router.post('/direct', createTransactionDirect);
 
 router
   .route('/')

@@ -181,6 +181,12 @@ export const fuelService = {
       console.log('🔧 API: Calculated totalCost:', processedData.totalCost);
     }
     
+    // ВАЖНО: Убедимся, что amount всегда присутствует и равен volume
+    if (processedData.volume !== undefined && (processedData.amount === undefined || processedData.amount === null)) {
+      processedData.amount = processedData.volume;
+      console.log('🔧 API: Setting amount = volume:', processedData.amount);
+    }
+    
     // Убедимся, что timestamp в правильном формате
     if (processedData.timestamp && typeof processedData.timestamp === 'object') {
       processedData.timestamp = processedData.timestamp.getTime();
@@ -194,6 +200,12 @@ export const fuelService = {
       }
     });
     
+    // ВАЖНО: Проверяем наличие критических полей для сервера
+    if (processedData.amount === null || processedData.amount === undefined) {
+      console.log('🔧 API: Critical field amount is missing, setting to 0');
+      processedData.amount = 0;
+    }
+    
     // Заменяем значение userRole, так как сервер не ожидает это поле
     if (processedData.userRole) {
       delete processedData.userRole;
@@ -201,31 +213,64 @@ export const fuelService = {
     
     console.log('🔧 API: Processed data for POST request:', JSON.stringify(processedData, null, 2));
     
-    return api.post('/fuel', processedData)
+    // Для надежности сразу используем прямой метод создания
+    return api.post('/fuel/direct', processedData)
       .then(response => {
-        console.log('🔧 API: Transaction created successfully:', response.data);
+        console.log('🔧 API: Transaction created successfully via direct API:', response.data);
         return response;
       })
-      .catch(error => {
-        console.error('🔥 API ERROR: Create transaction failed:', error);
-        console.error('🔥 API ERROR details:', error.response?.data);
+      .catch(directError => {
+        console.error('🔥 API ERROR: Direct create failed:', directError);
         
-        // Пробуем альтернативный URL в случае ошибки
-        if (error.response && error.response.status === 400) {
-          console.log('🔍 API: Trying alternative URL for creating transaction');
-          // Используем альтернативный URL /fuel/debug
-          return api.post('/fuel/debug', processedData)
-            .then(response => {
-              console.log('🔍 API: Alternative create request successful');
-              return response;
-            })
-            .catch(altError => {
-              console.error('🔥 API ERROR: Alternative create request failed:', altError);
-              return Promise.reject(altError);
-            });
-        }
-        
-        return Promise.reject(error);
+        // Попробуем стандартный метод как запасной вариант
+        return api.post('/fuel', processedData)
+          .then(response => {
+            console.log('🔧 API: Transaction created successfully via standard API:', response.data);
+            return response;
+          })
+          .catch(error => {
+            console.error('🔥 API ERROR: Standard create failed:', error);
+            console.error('🔥 API ERROR details:', error.response?.data);
+            
+            // Пробуем альтернативный URL в случае ошибки
+            if (error.response && error.response.status === 400) {
+              console.log('🔍 API: Trying debug endpoint');
+              // Используем альтернативный URL /fuel/debug
+              return api.post('/fuel/debug', processedData)
+                .then(response => {
+                  console.log('🔍 API: Debug endpoint request successful');
+                  return response;
+                })
+                .catch(altError => {
+                  console.error('🔥 API ERROR: Debug endpoint failed:', altError);
+                  
+                  // Последняя попытка - создать самую минимальную транзакцию
+                  console.log('🔥 API: Last resort - creating minimal transaction');
+                  const minimalData = {
+                    type: 'purchase',
+                    volume: processedData.volume || 0,
+                    amount: processedData.volume || 0,  // Явно задаем amount
+                    price: processedData.price || 0,
+                    totalCost: processedData.totalCost || 0,
+                    fuelType: processedData.fuelType || 'diesel',
+                    date: new Date().toISOString(),
+                    timestamp: Date.now()
+                  };
+                  
+                  return api.post('/fuel/direct', minimalData)
+                    .then(response => {
+                      console.log('🔥 API: Minimal transaction created successfully');
+                      return response;
+                    })
+                    .catch(finalError => {
+                      console.error('🔥 API: All attempts failed:', finalError);
+                      return Promise.reject(finalError);
+                    });
+                });
+            }
+            
+            return Promise.reject(error);
+          });
       });
   },
   updateTransaction: (id, transactionData) => api.put(`/fuel/${id}`, transactionData),

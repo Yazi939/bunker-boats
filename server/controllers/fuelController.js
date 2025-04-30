@@ -1,5 +1,6 @@
 const { FuelTransaction, User, Vehicle } = require('../models/initModels');
 const { Op } = require('sequelize');
+const { sequelize } = require('../models/initModels');
 
 // @desc    Получение всех транзакций
 // @route   GET /api/fuel
@@ -242,6 +243,72 @@ exports.deleteTransaction = async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message
+    });
+  }
+};
+
+// @desc    Создание транзакции через прямой SQL
+// @route   POST /api/fuel/direct
+// @access  Public
+exports.createTransactionDirect = async (req, res) => {
+  try {
+    console.log('💉 POST /api/fuel/direct - START REQUEST');
+    console.log('💉 Request body:', JSON.stringify(req.body, null, 2));
+    
+    // Получаем данные из запроса
+    const { type, volume, price, totalCost, fuelType, supplier, timestamp, date, key } = req.body;
+    
+    // Устанавливаем значения по умолчанию
+    const safeType = type || 'purchase';
+    const safeVolume = volume || 0;
+    const safePrice = price || 0;
+    const safeTotalCost = totalCost || (safeVolume * safePrice);
+    const safeFuelType = fuelType || 'gasoline_95';
+    const safeSupplier = supplier || null;
+    const safeDate = date ? new Date(date) : (timestamp ? new Date(timestamp) : new Date());
+    const safeKey = key || `direct-${Date.now()}`;
+    
+    // Выполняем прямой SQL-запрос, обходя ORM
+    const query = `
+      INSERT INTO "FuelTransactions" 
+      ("type", "volume", "amount", "price", "totalCost", "fuelType", "supplier", "date", "createdAt", "updatedAt")
+      VALUES 
+      (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      RETURNING *
+    `;
+    
+    const values = [
+      safeType,
+      safeVolume,
+      safeVolume, // amount = volume
+      safePrice, 
+      safeTotalCost,
+      safeFuelType,
+      safeSupplier,
+      safeDate
+    ];
+    
+    console.log('💉 Executing SQL with values:', values);
+    
+    const result = await sequelize.query(query, {
+      replacements: values,
+      type: sequelize.QueryTypes.INSERT,
+      raw: true
+    });
+    
+    console.log('💉 Transaction created with direct SQL');
+    
+    res.status(201).json({
+      success: true,
+      data: result[0]
+    });
+  } catch (error) {
+    console.error('💉 Error in direct transaction creation:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Ошибка при создании транзакции через прямой SQL',
+      details: error.message
     });
   }
 }; 

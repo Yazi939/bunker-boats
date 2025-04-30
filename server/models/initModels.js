@@ -192,4 +192,4 @@ FuelTransaction.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
 // Синхронизируем модели с базой данных
 sequelize.sync();
 
-module.exports = { User, sequelize }; 
+module.exports = { User, Vehicle, Shift, FuelTransaction, sequelize }; 

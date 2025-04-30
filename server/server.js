@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { connectDB } = require('./config/db');
 const seedUsers = require('./data/seedUsers');
-const { User, sequelize } = require('./models/initModels');
+const { User, Vehicle, Shift, FuelTransaction, sequelize } = require('./models/initModels');
 
 // Проверка существования директории для данных
 const dataDir = path.join(__dirname, 'data');
@@ -21,12 +21,18 @@ dotenv.config();
 const initApp = async () => {
   try {
     await connectDB();
-    await sequelize.sync();
-    console.log('Модели синхронизированы с базой данных');
     
+    // Проверка на существование sequelize перед вызовом sync
+    if (sequelize && typeof sequelize.sync === 'function') {
+      await sequelize.sync();
+      console.log('Модели синхронизированы с базой данных');
+    } else {
+      console.log('Предупреждение: sequelize не определен или не содержит метод sync');
+    }
+
     // Создание начальных пользователей
     await seedUsers();
-    
+
     const app = express();
 
     // Middleware

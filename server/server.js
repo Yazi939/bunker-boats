@@ -46,7 +46,26 @@ const initApp = async () => {
       methods: ['GET', 'POST', 'PUT', 'DELETE'],
       allowedHeaders: ['Content-Type', 'Authorization']
     }));
+    
+    // Логирование запросов
     app.use(morgan('dev'));
+    
+    // Middleware для отладки запросов
+    app.use((req, res, next) => {
+      console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+      next();
+    });
+
+    // Middleware для обработки ошибок JSON парсинга
+    app.use((err, req, res, next) => {
+      if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Неверный формат JSON' 
+        });
+      }
+      next(err);
+    });
 
     // Маршруты API
     app.use('/api/users', require('./routes/userRoutes'));
@@ -60,12 +79,32 @@ const initApp = async () => {
       res.json({ message: 'API FUEL Manager успешно работает' });
     });
 
-    // Обработка ошибок
+    // Обработчик ошибок 404
+    app.use((req, res, next) => {
+      res.status(404).json({
+        success: false,
+        error: `Маршрут ${req.originalUrl} не найден на сервере`
+      });
+    });
+
+    // Общий обработчик ошибок
     app.use((err, req, res, next) => {
       console.error('Server error:', err.stack);
-      res.status(500).json({
-        message: 'Ошибка сервера',
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+      
+      // Обработка ошибок Sequelize
+      if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeUniqueConstraintError') {
+        return res.status(400).json({
+          success: false,
+          error: 'Ошибка валидации данных',
+          details: err.errors.map(e => e.message)
+        });
+      }
+      
+      // Обработка других ошибок
+      res.status(err.status || 500).json({
+        success: false,
+        error: err.message || 'Ошибка сервера',
+        details: process.env.NODE_ENV === 'development' ? err.stack : undefined
       });
     });
 

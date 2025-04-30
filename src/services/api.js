@@ -8,8 +8,8 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  // Добавляем таймаут для запросов
-  timeout: 5000
+  // Увеличиваем таймаут для запросов
+  timeout: 10000
 });
 
 // Перехватчик для добавления токена авторизации
@@ -18,6 +18,7 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('Adding token to request:', token.substring(0, 15) + '...');
     }
     return config;
   },
@@ -38,6 +39,13 @@ api.interceptors.response.use(
       });
     }
     
+    // Лог ошибок аутентификации
+    if (error.response && error.response.status === 401) {
+      console.error('Authentication Error:', error.response.data);
+      // Можно добавить автоматический выход при ошибках авторизации
+      // localStorage.removeItem('token');
+    }
+    
     return Promise.reject(error);
   }
 );
@@ -50,8 +58,14 @@ export const authService = {
       return Promise.reject(error);
     }),
   login: (username, password) => {
-    console.log('Login payload:', { username, password });
+    console.log('Login attempt:', { username, passwordProvided: !!password });
     return api.post('/users/login', { username, password })
+      .then(response => {
+        if (response.data && response.data.token) {
+          console.log('Login successful, token received');
+        }
+        return response;
+      })
       .catch(error => {
         console.log('Login error:', error.response?.data);
         if (!error.response) return { data: { success: false, message: 'Сервер недоступен' } };
@@ -59,7 +73,12 @@ export const authService = {
       });
   },
   getMe: () => api.get('/users/me')
+    .then(response => {
+      console.log('GetMe successful:', response.data.success);
+      return response;
+    })
     .catch(error => {
+      console.error('GetMe error:', error.response?.data);
       if (!error.response) return { data: { user: null } };
       return Promise.reject(error);
     })
@@ -94,7 +113,12 @@ export const shiftService = {
 // Топливо
 export const fuelService = {
   getTransactions: (params) => api.get('/fuel', { params })
+    .then(response => {
+      console.log('Fuel transactions received:', response.data.count);
+      return response;
+    })
     .catch(error => {
+      console.error('Fuel transactions error:', error.response?.data);
       if (!error.response) return { data: [] };
       return Promise.reject(error);
     }),

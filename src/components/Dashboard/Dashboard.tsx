@@ -316,27 +316,28 @@ const Dashboard: React.FC = () => {
 
   // Загрузка данных из базы данных
   const loadData = async () => {
-    setIsLoading(true);
-    
     try {
-      if (!window.electronAPI?.transactions?.getAll) {
+      setIsLoading(true);
+      
+      // Check API and get transactions
+      let allTransactions = [];
+      
+      // Check both API formats
+      // @ts-ignore
+      if (window.electronAPI?.transactions?.getAll) {
+        // @ts-ignore
+        allTransactions = await window.electronAPI.transactions.getAll();
+      // @ts-ignore
+      } else if (window.electronAPI?.getTransactions) {
+        // @ts-ignore
+        allTransactions = await window.electronAPI.getTransactions();
+      } else {
         console.error('API не инициализирован');
         message.error('API не инициализирован');
         return;
       }
-
-      // Получаем все транзакции из базы данных
-      const allTransactions = await window.electronAPI.transactions.getAll();
       
-      if (!allTransactions) {
-        console.error('Нет данных о транзакциях');
-        setTransactions([]);
-        return;
-      }
-
-      setTransactions(allTransactions);
-      
-      // Применяем фильтры
+      // Filter transactions based on the selected period and date range
       const filteredTransactions = filterTransactions(allTransactions);
       
       // Рассчитываем данные по типам топлива
@@ -396,15 +397,35 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const loadVehicles = async () => {
       try {
-        if (!window.electronAPI?.vehicles?.getAll) {
-          console.error('API транспортных средств не инициализирован');
+        // Проверяем наличие обоих вариантов API
+        if (!window.electronAPI) {
+          console.error('API не инициализирован');
           message.error('API не инициализирован');
+          setVehicles(vehiclesData); // Используем тестовые данные если API недоступен
           return;
         }
 
-        const dbVehicles = await window.electronAPI.vehicles.getAll();
+        let dbVehicles;
+        // Пробуем разные форматы API
+        // @ts-ignore
+        if (window.electronAPI.vehicles && window.electronAPI.vehicles.getAll) {
+          // Новый формат API (vehicles.getAll)
+          // @ts-ignore
+          dbVehicles = await window.electronAPI.vehicles.getAll();
+        // @ts-ignore
+        } else if (window.electronAPI.getVehicles) {
+          // Старый формат API (getVehicles)
+          // @ts-ignore
+          dbVehicles = await window.electronAPI.getVehicles();
+        } else {
+          console.error('API транспортных средств не инициализирован');
+          message.error('API транспортных средств не инициализирован');
+          setVehicles(vehiclesData); // Используем тестовые данные если API недоступен
+          return;
+        }
         
-        if (!dbVehicles) {
+        if (!dbVehicles || dbVehicles.length === 0) {
+          console.log('Нет данных о транспортных средствах, используем тестовые данные');
           setVehicles(vehiclesData); // Используем тестовые данные если API недоступен
           return;
         }
@@ -538,12 +559,39 @@ const Dashboard: React.FC = () => {
     if (!editingVehicle) return;
     
     try {
-      await window.electronAPI.vehicles.update({
-        ...values,
-        key: editingVehicle.key
-      });
+      // Проверяем наличие API в разных форматах
+      // @ts-ignore
+      if (window.electronAPI?.vehicles?.update) {
+        // @ts-ignore
+        await window.electronAPI.vehicles.update({
+          ...values,
+          key: editingVehicle.key
+        });
+      // @ts-ignore
+      } else if (window.electronAPI?.updateVehicle) {
+        // @ts-ignore
+        await window.electronAPI.updateVehicle({
+          ...values,
+          key: editingVehicle.key
+        });
+      } else {
+        throw new Error('API транспортных средств не инициализирован');
+      }
       
-      const updatedVehicles = await window.electronAPI.vehicles.getAll();
+      // Получаем обновленный список ТС
+      let updatedVehicles;
+      // @ts-ignore
+      if (window.electronAPI?.vehicles?.getAll) {
+        // @ts-ignore
+        updatedVehicles = await window.electronAPI.vehicles.getAll();
+      // @ts-ignore
+      } else if (window.electronAPI?.getVehicles) {
+        // @ts-ignore
+        updatedVehicles = await window.electronAPI.getVehicles();
+      } else {
+        throw new Error('API транспортных средств не инициализирован');
+      }
+      
       setVehicles(updatedVehicles);
       setIsEditModalVisible(false);
       setEditingVehicle(null);
@@ -565,8 +613,33 @@ const Dashboard: React.FC = () => {
         lastRefuel: values.lastRefuel
       };
       
-      await window.electronAPI.vehicles.add(newVehicle);
-      const updatedVehicles = await window.electronAPI.vehicles.getAll();
+      // Проверяем наличие API в разных форматах
+      // @ts-ignore
+      if (window.electronAPI?.vehicles?.add) {
+        // @ts-ignore
+        await window.electronAPI.vehicles.add(newVehicle);
+      // @ts-ignore
+      } else if (window.electronAPI?.addVehicle) {
+        // @ts-ignore
+        await window.electronAPI.addVehicle(newVehicle);
+      } else {
+        throw new Error('API транспортных средств не инициализирован');
+      }
+      
+      // Получаем обновленный список ТС
+      let updatedVehicles;
+      // @ts-ignore
+      if (window.electronAPI?.vehicles?.getAll) {
+        // @ts-ignore
+        updatedVehicles = await window.electronAPI.vehicles.getAll();
+      // @ts-ignore
+      } else if (window.electronAPI?.getVehicles) {
+        // @ts-ignore
+        updatedVehicles = await window.electronAPI.getVehicles();
+      } else {
+        throw new Error('API транспортных средств не инициализирован');
+      }
+      
       setVehicles(updatedVehicles);
       setIsAddModalVisible(false);
       addForm.resetFields();
@@ -586,8 +659,33 @@ const Dashboard: React.FC = () => {
       cancelText: 'Отмена',
       onOk: async () => {
         try {
-          await window.electronAPI.vehicles.delete(id);
-          const updatedVehicles = await window.electronAPI.vehicles.getAll();
+          // Проверяем наличие API в разных форматах
+          // @ts-ignore
+          if (window.electronAPI?.vehicles?.delete) {
+            // @ts-ignore
+            await window.electronAPI.vehicles.delete(id);
+          // @ts-ignore
+          } else if (window.electronAPI?.deleteVehicle) {
+            // @ts-ignore
+            await window.electronAPI.deleteVehicle(id);
+          } else {
+            throw new Error('API транспортных средств не инициализирован');
+          }
+          
+          // Получаем обновленный список ТС
+          let updatedVehicles;
+          // @ts-ignore
+          if (window.electronAPI?.vehicles?.getAll) {
+            // @ts-ignore
+            updatedVehicles = await window.electronAPI.vehicles.getAll();
+          // @ts-ignore
+          } else if (window.electronAPI?.getVehicles) {
+            // @ts-ignore
+            updatedVehicles = await window.electronAPI.getVehicles();
+          } else {
+            throw new Error('API транспортных средств не инициализирован');
+          }
+          
           setVehicles(updatedVehicles);
           message.success('Транспортное средство удалено');
         } catch (error) {

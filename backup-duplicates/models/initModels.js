@@ -7,19 +7,11 @@ const User = sequelize.define('User', {
     username: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
-        validate: {
-            notEmpty: true,
-            len: [3, 50]
-        }
+        unique: true
     },
     password: {
         type: DataTypes.STRING,
-        allowNull: false,
-        validate: {
-            notEmpty: true,
-            len: [6, 100]
-        }
+        allowNull: false
     },
     role: {
         type: DataTypes.ENUM('admin', 'user'),
@@ -167,7 +159,7 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
     },
     fuelType: {
         type: DataTypes.ENUM('diesel', 'gasoline', 'gasoline_95', 'gasoline_92'),
-        defaultValue: 'diesel'
+        defaultValue: 'gasoline_95'
     },
     source: {
         type: DataTypes.STRING,
@@ -225,14 +217,12 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
     timestamps: true,
     hooks: {
         beforeValidate: (transaction) => {
-            // Sync volume and amount fields
             if (transaction.volume !== undefined && transaction.amount === undefined) {
                 transaction.amount = transaction.volume;
             } else if (transaction.amount !== undefined && transaction.volume === undefined) {
                 transaction.volume = transaction.amount;
             }
             
-            // Convert timestamp to date if provided
             if (transaction.timestamp !== undefined) {
                 try {
                     transaction.date = new Date(transaction.timestamp);
@@ -243,7 +233,6 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
                 transaction.date = new Date();
             }
             
-            // Calculate totalCost if not provided
             if (transaction.totalCost === undefined && transaction.price !== undefined && 
                (transaction.volume !== undefined || transaction.amount !== undefined)) {
                 const quantity = transaction.volume !== undefined ? transaction.volume : transaction.amount;
@@ -254,16 +243,22 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
 });
 
 // Определяем связи
-User.hasMany(FuelTransaction, { foreignKey: 'userId' });
-FuelTransaction.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-
-Vehicle.hasMany(FuelTransaction, { foreignKey: 'vehicleId' });
-FuelTransaction.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
-
 Shift.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 Shift.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
+FuelTransaction.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+FuelTransaction.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
 
-// Синхронизируем модели с базой данных
-sequelize.sync();
+// Синхронизируем модели с базой данных с флагом alter для обновления структуры
+sequelize.sync({ alter: true }).then(() => {
+  console.log('✅ Database sync complete with alter: true');
+}).catch(err => {
+  console.error('❌ Database sync error:', err);
+});
 
-module.exports = { User, Vehicle, Shift, FuelTransaction, sequelize }; 
+module.exports = {
+    User,
+    Vehicle,
+    Shift,
+    FuelTransaction,
+    sequelize
+}; 

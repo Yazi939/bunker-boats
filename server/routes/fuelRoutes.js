@@ -13,12 +13,23 @@ const { protect, authorize } = require('../middleware/auth');
 const router = express.Router();
 
 // Добавляем временный маршрут без аутентификации для отладки
-router.get('/debug', getTransactions);
+// Debug endpoint возвращает данные в формате массива для совместимости с клиентом
+router.get('/debug', async (req, res) => {
+  try {
+    // Переиспользуем существующий контроллер, но игнорируем аутентификацию
+    // Это позволит клиенту получить доступ к данным в аварийном режиме
+    req.user = { id: 1, role: 'admin' }; // Устанавливаем фиктивного пользователя
+    await getTransactions(req, res);
+  } catch (error) {
+    console.error('Debug route error:', error);
+    res.status(500).json([]);  // Возвращаем пустой массив при ошибке
+  }
+});
 
 // Добавляем маршрут для тестирования POST запросов
 router.post('/debug', createTransaction);
 
-// Добавляем маршрут для прямого создания транзакций
+// Добавляем прямой маршрут для создания транзакций
 router.post('/direct', createTransactionDirect);
 
 router

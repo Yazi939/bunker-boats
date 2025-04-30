@@ -54,40 +54,37 @@ exports.getTransactions = async (req, res) => {
       ]
     });
     
-    // Объект пагинации
-    const pagination = {
-      total: count,
-      page,
-      limit,
-      pages: Math.ceil(count / limit)
-    };
-    
-    if (page < pagination.pages) {
-      pagination.next = {
-        page: page + 1,
-        limit
-      };
-    }
-    
-    if (page > 1) {
-      pagination.prev = {
-        page: page - 1,
-        limit
-      };
-    }
-    
-    res.status(200).json({
-      success: true,
-      count: rows.length,
-      pagination,
-      data: rows
+    // Модифицируем ответ для совместимости с клиентом
+    const transactions = rows.map(transaction => {
+      // Преобразуем объект Sequelize в чистый объект
+      const plainTransaction = transaction.get({ plain: true });
+      
+      // Гарантируем наличие ключа
+      if (!plainTransaction.key) {
+        plainTransaction.key = `tx-${plainTransaction.id}-${Date.now()}`;
+      }
+      
+      // Гарантируем, что volume и amount синхронизированы
+      if (plainTransaction.volume === undefined && plainTransaction.amount !== undefined) {
+        plainTransaction.volume = plainTransaction.amount;
+      } else if (plainTransaction.amount === undefined && plainTransaction.volume !== undefined) {
+        plainTransaction.amount = plainTransaction.volume;
+      }
+      
+      // Преобразуем timestamp если нужно
+      if (!plainTransaction.timestamp && plainTransaction.date) {
+        plainTransaction.timestamp = new Date(plainTransaction.date).getTime();
+      }
+      
+      return plainTransaction;
     });
+    
+    // Возвращаем массив данных вместо объекта success/data
+    return res.status(200).json(transactions);
   } catch (error) {
     console.error('Error in getTransactions:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    // В случае ошибки возвращаем пустой массив для совместимости с клиентом
+    res.status(500).json([]);
   }
 };
 
@@ -266,14 +263,14 @@ exports.createTransactionDirect = async (req, res) => {
     const safeFuelType = fuelType || 'gasoline_95';
     const safeSupplier = supplier || null;
     const safeDate = date ? new Date(date) : (timestamp ? new Date(timestamp) : new Date());
-    const safeKey = key || `direct-${Date.now()}`;
+    const safeKey = key || `direct-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     
     // Выполняем прямой SQL-запрос, обходя ORM
     const query = `
       INSERT INTO "FuelTransactions" 
-      ("type", "volume", "amount", "price", "totalCost", "fuelType", "supplier", "date", "createdAt", "updatedAt")
+      ("type", "volume", "amount", "price", "totalCost", "fuelType", "supplier", "date", "key", "createdAt", "updatedAt")
       VALUES 
-      (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       RETURNING *
     `;
     
@@ -285,7 +282,8 @@ exports.createTransactionDirect = async (req, res) => {
       safeTotalCost,
       safeFuelType,
       safeSupplier,
-      safeDate
+      safeDate,
+      safeKey
     ];
     
     console.log('💉 Executing SQL with values:', values);

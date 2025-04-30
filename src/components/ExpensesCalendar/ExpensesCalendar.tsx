@@ -48,20 +48,28 @@ const ExpensesCalendar: React.FC = () => {
 
   // Фильтрация транзакций по выбранным критериям
   const filteredTransactions = transactions.filter(t => {
-    const transactionDate = new Date(t.date);
-    
-    const matchesDate = !dateRange || (
-      transactionDate >= dateRange[0].startOf('day').toDate() &&
-      transactionDate <= dateRange[1].endOf('day').toDate()
-    );
-    
-    const matchesOperation = selectedOperationTypes.length === 0 || 
-      selectedOperationTypes.includes(t.type);
-    
-    const matchesFuel = selectedFuelTypes.length === 0 || 
-      selectedFuelTypes.includes(t.fuelType);
-    
-    return matchesDate && matchesOperation && matchesFuel;
+    try {
+      if (!t.date) return false;
+      
+      const transactionDate = new Date(t.date);
+      
+      const matchesDate = !dateRange || (
+        dateRange[0] && dateRange[1] && 
+        transactionDate >= dateRange[0].startOf('day').toDate() &&
+        transactionDate <= dateRange[1].endOf('day').toDate()
+      );
+      
+      const matchesOperation = selectedOperationTypes.length === 0 || 
+        selectedOperationTypes.includes(t.type);
+      
+      const matchesFuel = selectedFuelTypes.length === 0 || 
+        selectedFuelTypes.includes(t.fuelType);
+      
+      return matchesDate && matchesOperation && matchesFuel;
+    } catch (error) {
+      console.error('Error filtering transaction:', t, error);
+      return false;
+    }
   });
 
   // Загрузка данных при монтировании компонента
@@ -85,10 +93,18 @@ const ExpensesCalendar: React.FC = () => {
       console.log('Trying to fetch from server API...');
       try {
         // Получаем данные с сервера
-        const response = await fetch('http://89.169.170.164:5000/api/fuel');
+        const response = await fetch('http://89.169.170.164:5000/api/fuel', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`HTTP error! status: ${response.status}, details:`, errorText);
           throw new Error(`HTTP error! status: ${response.status}`);
         }
+        
         const apiResponse = await response.json();
         
         if (apiResponse.success && Array.isArray(apiResponse.data)) {
@@ -97,7 +113,8 @@ const ExpensesCalendar: React.FC = () => {
           // Форматируем данные
           const formattedData = apiResponse.data.map((t: Record<string, any>) => ({
             ...t,
-            key: String(t.id) || String(Math.random()),
+            id: t.id,
+            key: String(t.id || Math.random()),
             date: t.date ? new Date(t.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
           }));
           
@@ -301,18 +318,15 @@ const ExpensesCalendar: React.FC = () => {
         totalCost = volume * price;
       }
       
-      const newTransaction: FuelTransaction = {
-        key: String(Math.random()),
-        type: type as FuelTransaction['type'],
+      // Убираем поля, которые не должны отправляться на сервер
+      const newTransaction = {
+        type: type,
         fuelType: fuelType || '',
-        volume: volume || 0,
-        price: price || 0,
-        totalCost,
-        date,
-        timestamp,
+        volume: Number(volume) || 0,
+        price: Number(price) || 0,
+        totalCost: Number(totalCost),
+        date: date,
         notes: notes || '',
-        userId: currentUser?.id || '',
-        userRole: currentUser?.role || ''
       };
       
       console.log('Creating new transaction:', newTransaction);
@@ -328,6 +342,8 @@ const ExpensesCalendar: React.FC = () => {
         });
         
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`HTTP error! status: ${response.status}, details:`, errorText);
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         

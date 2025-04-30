@@ -26,6 +26,14 @@ const initApp = async () => {
     // Импортируем модели только после подключения к БД
     const { User, Vehicle, Shift, FuelTransaction, sequelize } = require('./models/initModels');
     
+    // Проверяем существование и удаляем таблицу backup перед синхронизацией
+    try {
+      await sequelize.query('DROP TABLE IF EXISTS `Users_backup`');
+      console.log('Удалена временная таблица Users_backup для предотвращения конфликтов');
+    } catch (dropError) {
+      console.warn('Не удалось удалить таблицу Users_backup:', dropError.message);
+    }
+    
     // Проверка на существование sequelize перед вызовом sync
     if (sequelize && typeof sequelize.sync === 'function') {
       await sequelize.sync({ alter: true }); // используем alter для автоматического обновления структуры

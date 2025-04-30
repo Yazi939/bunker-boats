@@ -293,6 +293,7 @@ const Dashboard: React.FC = () => {
   const currentUser = getCurrentUser();
   const canEditVehicles = currentUser?.role === 'admin';
   const [isHovered, setIsHovered] = useState<boolean>(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const iconProps = {
     className: "stat-icon",
@@ -349,9 +350,11 @@ const Dashboard: React.FC = () => {
   const loadData = async () => {
     try {
       setIsLoading(true);
+      setApiError(null); // Clear previous errors
       
       // Check API and get transactions
       let allTransactions = [];
+      let apiAvailable = false;
       
       // Приоритет 1: Проверяем доступность web API
       if (window.api && window.api.fuelService) {
@@ -360,11 +363,12 @@ const Dashboard: React.FC = () => {
           const response = await window.api.fuelService.getTransactions();
           if (response && response.data) {
             allTransactions = response.data;
+            apiAvailable = true;
             console.log('📊 Retrieved transactions from web API:', allTransactions.length);
           }
         } catch (webApiError) {
           console.error('📊 Web API error:', webApiError);
-          message.warning('Ошибка при получении данных через API');
+          setApiError('Ошибка соединения с сервером. Пожалуйста, проверьте подключение к сети или состояние сервера.');
         }
       }
       // Приоритет 2: Пробуем использовать Electron API если web API не сработал
@@ -378,8 +382,10 @@ const Dashboard: React.FC = () => {
             const result = await window.electronAPI.transactions.getAll();
             if (result && Array.isArray(result)) {
               allTransactions = result;
+              apiAvailable = true;
             } else if (result && result.data && Array.isArray(result.data)) {
               allTransactions = result.data;
+              apiAvailable = true;
             }
           // @ts-ignore
           } else if (window.electronAPI.getTransactions) {
@@ -388,22 +394,34 @@ const Dashboard: React.FC = () => {
             const result = await window.electronAPI.getTransactions();
             if (result && Array.isArray(result)) {
               allTransactions = result;
+              apiAvailable = true;
             } else if (result && result.data && Array.isArray(result.data)) {
               allTransactions = result.data;
+              apiAvailable = true;
             }
           }
         } catch (apiError) {
           console.error('📊 API error:', apiError);
-          message.warning('Ошибка при получении данных из локального API');
+          if (!apiAvailable) {
+            setApiError('Ошибка при получении данных из локального API');
+          }
         }
       } else {
         console.warn('📊 No API available');
+        if (!apiAvailable) {
+          setApiError('API не обнаружен. Возможно, проблема с настройкой приложения.');
+        }
       }
       
       // Если все еще нет данных, используем тестовые
       if (!allTransactions || allTransactions.length === 0) {
         console.warn('📊 No transactions found, using mock data');
         allTransactions = mockTransactions;
+        
+        if (!apiAvailable) {
+          // Отображаем предупреждение, но продолжаем работу с тестовыми данными
+          message.warning('Используются тестовые данные из-за недоступности API');
+        }
       }
       
       console.log('📊 Loaded transactions:', allTransactions.length);
@@ -460,6 +478,7 @@ const Dashboard: React.FC = () => {
       setTransactions([]);
       setFuelTypeData([]);
       setPeriodData([]);
+      setApiError('Произошла ошибка при обработке данных');
     } finally {
       setIsLoading(false);
     }
@@ -925,132 +944,181 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className={styles.dashboard}>
-      <Row gutter={16}>
-        <Col span={12}>
-          <Card>
-            <Statistic
-              title="Active Users"
-              value={11.28}
-              precision={2}
-              valueStyle={{ color: '#3f8600' }}
-              prefix={<ArrowUpOutlined {...iconProps} />}
-              suffix="%"
+      {isLoading ? (
+        <div className={styles.loadingContainer}>
+          <div className={styles.loadingSpinner}></div>
+          <p>Загрузка данных...</p>
+        </div>
+      ) : (
+        <>
+          {apiError && (
+            <Alert
+              message="Ошибка подключения к API"
+              description={apiError}
+              type="error"
+              closable
+              style={{ marginBottom: 16 }}
+              onClose={() => setApiError(null)}
+            />
+          )}
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={24} lg={24}>
+              <Card title="Фильтры" className={styles.filtersCard}>
+                <Space wrap>
+                  <Radio.Group value={period} onChange={handlePeriodChange}>
+                    <Radio.Button value="all">Все время</Radio.Button>
+                    <Radio.Button value="month">Месяц</Radio.Button>
+                    <Radio.Button value="week">Неделя</Radio.Button>
+                    <Radio.Button value="day">День</Radio.Button>
+                  </Radio.Group>
+                  
+                  <DatePicker.RangePicker 
+                    value={dateRange} 
+                    onChange={handleDateRangeChange}
+                    allowClear
+                    style={{ width: 250 }}
+                  />
+                  
+                  <Select
+                    placeholder="Тип топлива"
+                    allowClear
+                    style={{ width: 180 }}
+                    value={filterFuelType}
+                    onChange={handleFuelTypeChange}
+                  >
+                    {FUEL_TYPES.map(type => (
+                      <Option key={type.value} value={type.value}>{type.label}</Option>
+                    ))}
+                  </Select>
+                  
+                  <Button 
+                    icon={<ReloadOutlined />} 
+                    onClick={handleResetFilters}
+                  >
+                    Сбросить
+                  </Button>
+                  
+                  <Button 
+                    type="primary" 
+                    icon={<ReloadOutlined />} 
+                    onClick={loadData}
+                  >
+                    Обновить
+                  </Button>
+                </Space>
+              </Card>
+            </Col>
+            
+            <Col span={12}>
+              <Card>
+                <Statistic
+                  title="Active Users"
+                  value={11.28}
+                  precision={2}
+                  valueStyle={{ color: '#3f8600' }}
+                  prefix={<ArrowUpOutlined {...iconProps} />}
+                  suffix="%"
+                />
+              </Card>
+            </Col>
+            <Col span={12}>
+              <Card>
+                <Statistic
+                  title="Idle Users"
+                  value={9.3}
+                  precision={2}
+                  valueStyle={{ color: '#cf1322' }}
+                  prefix={<ArrowDownOutlined {...iconProps} />}
+                  suffix="%"
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          <div className="fuel-management-panel">
+            <h2>Управление расходом топлива</h2>
+            <div className="fuel-stats">
+              <div className="fuel-stat-item">
+                <div className="fuel-stat-title">Остаток на базе</div>
+                <div className="fuel-stat-value">{baseBalance.toFixed(2)} л</div>
+                <div className="fuel-stat-change">
+                  <ArrowUpOutlined {...iconProps} style={{ ...iconProps.style, color: '#3f8600' }} /> +5.3%
+                </div>
+              </div>
+              <div className="fuel-stat-item">
+                <div className="fuel-stat-title">Остаток на бункеровщике</div>
+                <div className="fuel-stat-value">{bunkerBalance.toFixed(2)} л</div>
+                <div className="fuel-stat-change">
+                  <ArrowUpOutlined {...iconProps} style={{ ...iconProps.style, color: '#3f8600' }} /> +2.1%
+                </div>
+              </div>
+              <div className="fuel-stat-item">
+                <div className="fuel-stat-title">Затраты на топливо</div>
+                <div className="fuel-stat-value">{totalPurchaseCost.toFixed(2)} ₽</div>
+                <div className="fuel-stat-change negative">
+                  <ArrowDownOutlined {...iconProps} style={{ ...iconProps.style, color: '#cf1322' }} /> -2.1%
+                </div>
+              </div>
+              <div className="fuel-stat-item">
+                <div className="fuel-stat-title">Прибыль</div>
+                <div className="fuel-stat-value">{(profit > 0 ? profit : 0).toFixed(2)} ₽</div>
+                <div className="fuel-stat-change">
+                  <ArrowUpOutlined {...iconProps} style={{ ...iconProps.style, color: '#3f8600' }} /> +3.5%
+                </div>
+                <div style={{ color: '#1890ff', fontSize: 13, marginTop: 4 }}>
+                  Заморожено: {frozenCost.toFixed(2)} ₽
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="statistics-card">
+            <Card title="Статистика по расходу топлива" className="chart-card">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={fuelData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="value" fill="#1890ff" />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+
+            <Card title="Распределение по типам ТС" className="chart-card">
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={vehicleTypeData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {vehicleTypeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </Card>
+          </div>
+
+          <Card className="table-card">
+            <Table
+              columns={vehicleColumns}
+              dataSource={vehicles}
+              pagination={{ pageSize: 10 }}
+              scroll={{ x: true }}
             />
           </Card>
-        </Col>
-        <Col span={12}>
-          <Card>
-            <Statistic
-              title="Idle Users"
-              value={9.3}
-              precision={2}
-              valueStyle={{ color: '#cf1322' }}
-              prefix={<ArrowDownOutlined {...iconProps} />}
-              suffix="%"
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      <div className="fuel-management-panel">
-        <h2>Управление расходом топлива</h2>
-        <div className="fuel-stats">
-          <div className="fuel-stat-item">
-            <div className="fuel-stat-title">Остаток на базе</div>
-            <div className="fuel-stat-value">{baseBalance.toFixed(2)} л</div>
-            <div className="fuel-stat-change">
-              <ArrowUpOutlined {...iconProps} style={{ ...iconProps.style, color: '#3f8600' }} /> +5.3%
-            </div>
-          </div>
-          <div className="fuel-stat-item">
-            <div className="fuel-stat-title">Остаток на бункеровщике</div>
-            <div className="fuel-stat-value">{bunkerBalance.toFixed(2)} л</div>
-            <div className="fuel-stat-change">
-              <ArrowUpOutlined {...iconProps} style={{ ...iconProps.style, color: '#3f8600' }} /> +2.1%
-            </div>
-          </div>
-          <div className="fuel-stat-item">
-            <div className="fuel-stat-title">Затраты на топливо</div>
-            <div className="fuel-stat-value">{totalPurchaseCost.toFixed(2)} ₽</div>
-            <div className="fuel-stat-change negative">
-              <ArrowDownOutlined {...iconProps} style={{ ...iconProps.style, color: '#cf1322' }} /> -2.1%
-            </div>
-          </div>
-          <div className="fuel-stat-item">
-            <div className="fuel-stat-title">Прибыль</div>
-            <div className="fuel-stat-value">{(profit > 0 ? profit : 0).toFixed(2)} ₽</div>
-            <div className="fuel-stat-change">
-              <ArrowUpOutlined {...iconProps} style={{ ...iconProps.style, color: '#3f8600' }} /> +3.5%
-            </div>
-            <div style={{ color: '#1890ff', fontSize: 13, marginTop: 4 }}>
-              Заморожено: {frozenCost.toFixed(2)} ₽
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="statistics-card">
-        <Card title="Статистика по расходу топлива" className="chart-card">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={fuelData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="value" fill="#1890ff" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card title="Распределение по типам ТС" className="chart-card">
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={vehicleTypeData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {vehicleTypeData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
-
-      <Card className="table-card">
-        <div className="table-toolbar">
-          <Space>
-            <DatePicker.RangePicker
-              value={dateRange}
-              onChange={(dates) => setDateRange(dates)}
-            />
-            <Select
-              placeholder="Тип топлива"
-              style={{ width: 200 }}
-              options={FUEL_TYPES.map(type => ({ value: type.value, label: type.label }))}
-              onChange={handleFuelTypeChange}
-            />
-            <Button type="primary" onClick={handleResetFilters}>
-              Применить фильтр
-            </Button>
-          </Space>
-        </div>
-        <Table
-          columns={columns}
-          dataSource={vehicles}
-          pagination={{ pageSize: 10 }}
-          scroll={{ x: true }}
-        />
-      </Card>
+        </>
+      )}
     </div>
   );
 };

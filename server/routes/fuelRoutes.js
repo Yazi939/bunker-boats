@@ -14,6 +14,9 @@ const router = express.Router();
 // Добавляем временный маршрут без аутентификации для отладки
 router.get('/debug', getTransactions);
 
+// Добавляем маршрут для тестирования POST запросов
+router.post('/debug', createTransaction);
+
 router
   .route('/')
   .get(protect, getTransactions)

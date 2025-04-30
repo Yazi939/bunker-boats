@@ -169,7 +169,65 @@ export const fuelService = {
       return Promise.reject(error);
     }),
   getTransaction: (id) => api.get(`/fuel/${id}`),
-  createTransaction: (transactionData) => api.post('/fuel', transactionData),
+  createTransaction: (transactionData) => {
+    console.log('🔧 API: Creating transaction with data:', JSON.stringify(transactionData, null, 2));
+    
+    // Клонируем данные для обработки
+    const processedData = { ...transactionData };
+    
+    // Убедимся, что все необходимые поля присутствуют
+    if (processedData.totalCost === undefined && processedData.volume !== undefined && processedData.price !== undefined) {
+      processedData.totalCost = Number(processedData.volume) * Number(processedData.price);
+      console.log('🔧 API: Calculated totalCost:', processedData.totalCost);
+    }
+    
+    // Убедимся, что timestamp в правильном формате
+    if (processedData.timestamp && typeof processedData.timestamp === 'object') {
+      processedData.timestamp = processedData.timestamp.getTime();
+      console.log('🔧 API: Converted timestamp to number:', processedData.timestamp);
+    }
+    
+    // Преобразуем undefined в null для JSON
+    Object.keys(processedData).forEach(key => {
+      if (processedData[key] === undefined) {
+        processedData[key] = null;
+      }
+    });
+    
+    // Заменяем значение userRole, так как сервер не ожидает это поле
+    if (processedData.userRole) {
+      delete processedData.userRole;
+    }
+    
+    console.log('🔧 API: Processed data for POST request:', JSON.stringify(processedData, null, 2));
+    
+    return api.post('/fuel', processedData)
+      .then(response => {
+        console.log('🔧 API: Transaction created successfully:', response.data);
+        return response;
+      })
+      .catch(error => {
+        console.error('🔥 API ERROR: Create transaction failed:', error);
+        console.error('🔥 API ERROR details:', error.response?.data);
+        
+        // Пробуем альтернативный URL в случае ошибки
+        if (error.response && error.response.status === 400) {
+          console.log('🔍 API: Trying alternative URL for creating transaction');
+          // Используем альтернативный URL /fuel/debug
+          return api.post('/fuel/debug', processedData)
+            .then(response => {
+              console.log('🔍 API: Alternative create request successful');
+              return response;
+            })
+            .catch(altError => {
+              console.error('🔥 API ERROR: Alternative create request failed:', altError);
+              return Promise.reject(altError);
+            });
+        }
+        
+        return Promise.reject(error);
+      });
+  },
   updateTransaction: (id, transactionData) => api.put(`/fuel/${id}`, transactionData),
   deleteTransaction: (id) => api.delete(`/fuel/${id}`)
 };

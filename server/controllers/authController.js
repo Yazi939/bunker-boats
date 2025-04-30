@@ -26,6 +26,7 @@ exports.register = async (req, res) => {
 
     sendTokenResponse(user, 201, res);
   } catch (error) {
+    console.error('Registration error:', error);
     res.status(400).json({
       success: false,
       error: error.message
@@ -50,8 +51,7 @@ exports.login = async (req, res) => {
 
     // Поиск пользователя с паролем
     const user = await User.findOne({ 
-      where: { username },
-      attributes: { include: ['password'] }
+      where: { username }
     });
 
     if (!user) {
@@ -72,7 +72,7 @@ exports.login = async (req, res) => {
 
     sendTokenResponse(user, 200, res);
   } catch (error) {
-    console.error(error);
+    console.error('Login error:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -85,12 +85,30 @@ exports.login = async (req, res) => {
 // @access  Private
 exports.getMe = async (req, res) => {
   try {
-    const user = await User.findByPk(req.user.id);
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        error: 'Пользователь не авторизован'
+      });
+    }
+    
+    const user = await User.findByPk(req.user.id, {
+      attributes: { exclude: ['password'] }
+    });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'Пользователь не найден'
+      });
+    }
+    
     res.status(200).json({
       success: true,
       user
     });
   } catch (error) {
+    console.error('GetMe error:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -107,13 +125,16 @@ const sendTokenResponse = (user, statusCode, res) => {
     { expiresIn: '30d' }
   );
 
+  // Сохраняем пользователя в localStorage на стороне клиента
+  const userResponse = {
+    id: user.id,
+    username: user.username,
+    role: user.role
+  };
+
   res.status(statusCode).json({
     success: true,
     token,
-    user: {
-      id: user.id,
-      username: user.username,
-      role: user.role
-    }
+    user: userResponse
   });
 }; 

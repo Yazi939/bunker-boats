@@ -178,16 +178,55 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
     notes: {
         type: DataTypes.TEXT,
         allowNull: true
+    },
+    volume: {
+        type: DataTypes.FLOAT,
+        allowNull: false,
+        validate: {
+            min: { args: [0], msg: 'Объем должен быть положительным числом' }
+        }
+    },
+    frozen: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    edited: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    timestamp: {
+        type: DataTypes.BIGINT,
+        allowNull: true
+    },
+    supplier: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    customer: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    vessel: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    paymentMethod: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 }, {
     timestamps: true
 });
 
 // Определяем связи
+User.hasMany(FuelTransaction, { foreignKey: 'userId' });
+FuelTransaction.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Vehicle.hasMany(FuelTransaction, { foreignKey: 'vehicleId' });
+FuelTransaction.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
+
 Shift.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 Shift.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
-FuelTransaction.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-FuelTransaction.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
 
 // Синхронизируем модели с базой данных
 sequelize.sync();

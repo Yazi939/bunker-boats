@@ -1,67 +1,74 @@
-const { FuelTransaction } = require('../models/initModels');
+const { FuelTransaction, User, Vehicle } = require('../models/initModels');
+const { Op } = require('sequelize');
 
 // @desc    Получение всех транзакций
 // @route   GET /api/fuel
 // @access  Private
 exports.getTransactions = async (req, res) => {
   try {
-    let query;
+    // Создаем базовый объект запроса
+    let whereClause = {};
     
-    // Копируем req.query
-    const reqQuery = { ...req.query };
-    
-    // Поля для исключения
-    const removeFields = ['select', 'sort', 'page', 'limit'];
-    
-    // Удаляем поля из запроса
-    removeFields.forEach(param => delete reqQuery[param]);
-    
-    // Создаем строку запроса
-    let queryStr = JSON.stringify(reqQuery);
-    
-    // Создаем операторы ($gt, $gte, и т.д.)
-    queryStr = queryStr.replace(/\b(gt|gte|lt|lte|in)\b/g, match => `$${match}`);
-    
-    // Поиск транзакций
-    query = FuelTransaction.find(JSON.parse(queryStr));
-    
-    // Выбор полей
-    if (req.query.select) {
-      const fields = req.query.select.split(',').join(' ');
-      query = query.select(fields);
+    // Применяем фильтрацию, если указаны параметры
+    if (req.query.fuelType) {
+      whereClause.fuelType = req.query.fuelType;
     }
     
-    // Сортировка
-    if (req.query.sort) {
-      const sortBy = req.query.sort.split(',').join(' ');
-      query = query.sort(sortBy);
-    } else {
-      query = query.sort('-timestamp');
+    if (req.query.type) {
+      whereClause.type = req.query.type;
+    }
+    
+    if (req.query.startDate && req.query.endDate) {
+      whereClause.date = {
+        [Op.between]: [req.query.startDate, req.query.endDate]
+      };
     }
     
     // Пагинация
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 25;
-    const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
-    const total = await FuelTransaction.countDocuments(JSON.parse(queryStr));
+    const offset = (page - 1) * limit;
     
-    query = query.skip(startIndex).limit(limit);
+    // Опции сортировки
+    let order = [['date', 'DESC']]; // по умолчанию по дате в обратном порядке
+    if (req.query.sort) {
+      const sortParams = req.query.sort.split(',');
+      order = sortParams.map(param => {
+        if (param.startsWith('-')) {
+          return [param.substring(1), 'DESC'];
+        }
+        return [param, 'ASC'];
+      });
+    }
     
-    // Выполнение запроса
-    const transactions = await query;
+    // Выполнение запроса с учетом пагинации и сортировки
+    const { count, rows } = await FuelTransaction.findAndCountAll({
+      where: whereClause,
+      limit,
+      offset,
+      order,
+      include: [
+        { model: User, as: 'user', attributes: ['id', 'username', 'role'] },
+        { model: Vehicle, as: 'vehicle', attributes: ['id', 'name', 'registrationNumber'] }
+      ]
+    });
     
     // Объект пагинации
-    const pagination = {};
+    const pagination = {
+      total: count,
+      page,
+      limit,
+      pages: Math.ceil(count / limit)
+    };
     
-    if (endIndex < total) {
+    if (page < pagination.pages) {
       pagination.next = {
         page: page + 1,
         limit
       };
     }
     
-    if (startIndex > 0) {
+    if (page > 1) {
       pagination.prev = {
         page: page - 1,
         limit
@@ -70,11 +77,12 @@ exports.getTransactions = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      count: transactions.length,
+      count: rows.length,
       pagination,
-      data: transactions
+      data: rows
     });
   } catch (error) {
+    console.error('Error in getTransactions:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -87,7 +95,12 @@ exports.getTransactions = async (req, res) => {
 // @access  Private
 exports.getTransaction = async (req, res) => {
   try {
-    const transaction = await FuelTransaction.findById(req.params.id);
+    const transaction = await FuelTransaction.findByPk(req.params.id, {
+      include: [
+        { model: User, as: 'user', attributes: ['id', 'username', 'role'] },
+        { model: Vehicle, as: 'vehicle', attributes: ['id', 'name', 'registrationNumber'] }
+      ]
+    });
     
     if (!transaction) {
       return res.status(404).json({
@@ -115,8 +128,7 @@ exports.createTransaction = async (req, res) => {
   try {
     // Добавляем пользователя к транзакции
     if (req.user) {
-      req.body.user = req.user.id;
-      req.body.userRole = req.user.role;
+      req.body.userId = req.user.id;
     }
     
     const transaction = await FuelTransaction.create(req.body);
@@ -126,6 +138,7 @@ exports.createTransaction = async (req, res) => {
       data: transaction
     });
   } catch (error) {
+    console.error('Error in createTransaction:', error);
     res.status(400).json({
       success: false,
       error: error.message
@@ -138,7 +151,7 @@ exports.createTransaction = async (req, res) => {
 // @access  Private
 exports.updateTransaction = async (req, res) => {
   try {
-    let transaction = await FuelTransaction.findById(req.params.id);
+    let transaction = await FuelTransaction.findByPk(req.params.id);
     
     if (!transaction) {
       return res.status(404).json({
@@ -156,7 +169,7 @@ exports.updateTransaction = async (req, res) => {
     }
     
     // Проверка владельца транзакции или админа
-    if (transaction.user && transaction.user.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (transaction.userId && transaction.userId !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         error: 'У вас нет прав для обновления этой транзакции'
@@ -165,18 +178,22 @@ exports.updateTransaction = async (req, res) => {
     
     // Отмечаем транзакцию как отредактированную
     req.body.edited = true;
-    req.body.editTimestamp = Date.now();
     
-    transaction = await FuelTransaction.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true
+    await transaction.update(req.body);
+    
+    const updatedTransaction = await FuelTransaction.findByPk(req.params.id, {
+      include: [
+        { model: User, as: 'user', attributes: ['id', 'username', 'role'] },
+        { model: Vehicle, as: 'vehicle', attributes: ['id', 'name', 'registrationNumber'] }
+      ]
     });
     
     res.status(200).json({
       success: true,
-      data: transaction
+      data: updatedTransaction
     });
   } catch (error) {
+    console.error('Error in updateTransaction:', error);
     res.status(400).json({
       success: false,
       error: error.message
@@ -189,7 +206,7 @@ exports.updateTransaction = async (req, res) => {
 // @access  Private
 exports.deleteTransaction = async (req, res) => {
   try {
-    const transaction = await FuelTransaction.findById(req.params.id);
+    const transaction = await FuelTransaction.findByPk(req.params.id);
     
     if (!transaction) {
       return res.status(404).json({
@@ -207,20 +224,21 @@ exports.deleteTransaction = async (req, res) => {
     }
     
     // Проверка владельца транзакции или админа
-    if (transaction.user && transaction.user.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (transaction.userId && transaction.userId !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         error: 'У вас нет прав для удаления этой транзакции'
       });
     }
     
-    await transaction.deleteOne();
+    await transaction.destroy();
     
     res.status(200).json({
       success: true,
       data: {}
     });
   } catch (error) {
+    console.error('Error in deleteTransaction:', error);
     res.status(500).json({
       success: false,
       error: error.message

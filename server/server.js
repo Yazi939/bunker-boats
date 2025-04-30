@@ -6,7 +6,6 @@ const fs = require('fs');
 const path = require('path');
 const { connectDB } = require('./config/db');
 const seedUsers = require('./data/seedUsers');
-const { User, Vehicle, Shift, FuelTransaction, sequelize } = require('./models/initModels');
 
 // Проверка существования директории для данных
 const dataDir = path.join(__dirname, 'data');
@@ -20,11 +19,16 @@ dotenv.config();
 // Подключение к базе данных и инициализация моделей
 const initApp = async () => {
   try {
-    await connectDB();
+    // Подключаемся к базе данных
+    const db = await connectDB();
+    console.log('База данных успешно подключена');
+    
+    // Импортируем модели только после подключения к БД
+    const { User, Vehicle, Shift, FuelTransaction, sequelize } = require('./models/initModels');
     
     // Проверка на существование sequelize перед вызовом sync
     if (sequelize && typeof sequelize.sync === 'function') {
-      await sequelize.sync();
+      await sequelize.sync({ alter: true }); // используем alter для автоматического обновления структуры
       console.log('Модели синхронизированы с базой данных');
     } else {
       console.log('Предупреждение: sequelize не определен или не содержит метод sync');
@@ -37,7 +41,11 @@ const initApp = async () => {
 
     // Middleware
     app.use(express.json());
-    app.use(cors());
+    app.use(cors({
+      origin: '*', // разрешаем доступ с любого источника для тестирования
+      methods: ['GET', 'POST', 'PUT', 'DELETE'],
+      allowedHeaders: ['Content-Type', 'Authorization']
+    }));
     app.use(morgan('dev'));
 
     // Маршруты API
@@ -54,7 +62,7 @@ const initApp = async () => {
 
     // Обработка ошибок
     app.use((err, req, res, next) => {
-      console.error(err.stack);
+      console.error('Server error:', err.stack);
       res.status(500).json({
         message: 'Ошибка сервера',
         error: process.env.NODE_ENV === 'development' ? err.message : undefined

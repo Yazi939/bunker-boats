@@ -19,7 +19,10 @@ import {
   Form,
   Input,
   Modal,
-  message
+  message,
+  Layout,
+  InputNumber,
+  Popconfirm
 } from 'antd';
 import {
   BarChart,
@@ -53,6 +56,40 @@ import { calculateFuelBalances, calculateFuelStats } from '../../utils/fuelBalan
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
 const { Option } = Select;
+
+// Добавляем объявление для window.api
+declare global {
+  interface Window {
+    electronAPI?: any;
+    api?: any;
+  }
+}
+
+// Примеры тестовых транзакций
+const mockTransactions: FuelTransaction[] = [
+  {
+    key: '1',
+    type: 'purchase',
+    volume: 1000,
+    price: 50,
+    totalCost: 50000,
+    date: '2023-01-15',
+    timestamp: 1673740800000,
+    fuelType: 'diesel',
+    supplier: 'ООО Нефтетрейд'
+  },
+  {
+    key: '2',
+    type: 'sale',
+    volume: 500,
+    price: 65,
+    totalCost: 32500,
+    date: '2023-01-20',
+    timestamp: 1674172800000,
+    fuelType: 'diesel',
+    customer: 'ИП Иванов'
+  }
+];
 
 // Типы топлива
 const FUEL_TYPES = [
@@ -322,20 +359,70 @@ const Dashboard: React.FC = () => {
       // Check API and get transactions
       let allTransactions = [];
       
-      // Check both API formats
-      // @ts-ignore
-      if (window.electronAPI?.transactions?.getAll) {
-        // @ts-ignore
-        allTransactions = await window.electronAPI.transactions.getAll();
-      // @ts-ignore
-      } else if (window.electronAPI?.getTransactions) {
-        // @ts-ignore
-        allTransactions = await window.electronAPI.getTransactions();
+      // Попытка использовать API
+      if (window.electronAPI) {
+        try {
+          // Check both API formats
+          // @ts-ignore
+          if (window.electronAPI.transactions?.getAll) {
+            console.log('📊 Using window.electronAPI.transactions.getAll()');
+            // @ts-ignore
+            const result = await window.electronAPI.transactions.getAll();
+            if (result && Array.isArray(result)) {
+              allTransactions = result;
+            } else if (result && result.data && Array.isArray(result.data)) {
+              allTransactions = result.data;
+            }
+          // @ts-ignore
+          } else if (window.electronAPI.getTransactions) {
+            console.log('📊 Using window.electronAPI.getTransactions()');
+            // @ts-ignore
+            const result = await window.electronAPI.getTransactions();
+            if (result && Array.isArray(result)) {
+              allTransactions = result;
+            } else if (result && result.data && Array.isArray(result.data)) {
+              allTransactions = result.data;
+            }
+          } else {
+            // Используем транзакции из модели FuelTransaction
+            console.warn('📊 API methods not found, using data from model');
+            if (window.api && window.api.fuelService) {
+              const response = await window.api.fuelService.getTransactions();
+              if (response && response.data) {
+                allTransactions = response.data;
+              }
+            } else {
+              throw new Error('API не инициализирован полностью');
+            }
+          }
+        } catch (apiError) {
+          console.error('📊 API error:', apiError);
+          message.warning('Ошибка при получении данных из API, использую тестовые данные');
+        }
       } else {
-        console.error('API не инициализирован');
-        message.error('API не инициализирован');
-        return;
+        console.warn('📊 electronAPI not available, using test data');
+        // Используем транзакции из модели FuelTransaction
+        if (window.api && window.api.fuelService) {
+          try {
+            const response = await window.api.fuelService.getTransactions();
+            if (response && response.data) {
+              allTransactions = response.data;
+              console.log('📊 Retrieved transactions from web API:', allTransactions.length);
+            }
+          } catch (webApiError) {
+            console.error('📊 Web API error:', webApiError);
+          }
+        }
       }
+      
+      // Если все еще нет данных, используем тестовые
+      if (!allTransactions || allTransactions.length === 0) {
+        console.warn('📊 No transactions found, using mock data');
+        allTransactions = mockTransactions;
+      }
+      
+      console.log('📊 Loaded transactions:', allTransactions.length);
+      setTransactions(allTransactions);
       
       // Filter transactions based on the selected period and date range
       const filteredTransactions = filterTransactions(allTransactions);
@@ -397,42 +484,72 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const loadVehicles = async () => {
       try {
-        // Проверяем наличие обоих вариантов API
-        if (!window.electronAPI) {
-          console.error('API не инициализирован');
-          message.error('API не инициализирован');
-          setVehicles(vehiclesData); // Используем тестовые данные если API недоступен
-          return;
-        }
-
-        let dbVehicles;
-        // Пробуем разные форматы API
-        // @ts-ignore
-        if (window.electronAPI.vehicles && window.electronAPI.vehicles.getAll) {
-          // Новый формат API (vehicles.getAll)
-          // @ts-ignore
-          dbVehicles = await window.electronAPI.vehicles.getAll();
-        // @ts-ignore
-        } else if (window.electronAPI.getVehicles) {
-          // Старый формат API (getVehicles)
-          // @ts-ignore
-          dbVehicles = await window.electronAPI.getVehicles();
-        } else {
-          console.error('API транспортных средств не инициализирован');
-          message.error('API транспортных средств не инициализирован');
-          setVehicles(vehiclesData); // Используем тестовые данные если API недоступен
-          return;
+        let dbVehicles = [];
+        
+        if (window.electronAPI) {
+          try {
+            // Пробуем разные форматы API
+            // @ts-ignore
+            if (window.electronAPI.vehicles && window.electronAPI.vehicles.getAll) {
+              // Новый формат API (vehicles.getAll)
+              console.log('🚗 Using window.electronAPI.vehicles.getAll()');
+              // @ts-ignore
+              const result = await window.electronAPI.vehicles.getAll();
+              if (result && Array.isArray(result)) {
+                dbVehicles = result;
+              } else if (result && result.data && Array.isArray(result.data)) {
+                dbVehicles = result.data;
+              }
+            // @ts-ignore
+            } else if (window.electronAPI.getVehicles) {
+              // Старый формат API (getVehicles)
+              console.log('🚗 Using window.electronAPI.getVehicles()');
+              // @ts-ignore
+              const result = await window.electronAPI.getVehicles();
+              if (result && Array.isArray(result)) {
+                dbVehicles = result;
+              } else if (result && result.data && Array.isArray(result.data)) {
+                dbVehicles = result.data;
+              }
+            } else {
+              console.log('🚗 electronAPI vehicle methods not found, trying web API');
+              // Пробуем использовать веб API
+              if (window.api && window.api.vehicleService) {
+                const response = await window.api.vehicleService.getVehicles();
+                if (response && response.data) {
+                  dbVehicles = Array.isArray(response.data) ? response.data : 
+                               (response.data.data ? response.data.data : []);
+                }
+              }
+            }
+          } catch (apiError) {
+            console.warn('🚗 Error loading vehicles from API:', apiError);
+          }
+        } else if (window.api && window.api.vehicleService) {
+          // Пробуем использовать веб API напрямую
+          try {
+            console.log('🚗 Using web API vehicleService');
+            const response = await window.api.vehicleService.getVehicles();
+            if (response && response.data) {
+              dbVehicles = Array.isArray(response.data) ? response.data : 
+                           (response.data.data ? response.data.data : []);
+            }
+          } catch (webError) {
+            console.warn('🚗 Error loading vehicles from web API:', webError);
+          }
         }
         
+        // Если нет данных или произошла ошибка, используем тестовые данные
         if (!dbVehicles || dbVehicles.length === 0) {
-          console.log('Нет данных о транспортных средствах, используем тестовые данные');
-          setVehicles(vehiclesData); // Используем тестовые данные если API недоступен
+          console.log('🚗 No vehicle data found, using mock data');
+          setVehicles(vehiclesData); // Используем тестовые данные
           return;
         }
 
+        console.log('🚗 Loaded vehicles:', dbVehicles.length);
         setVehicles(dbVehicles);
       } catch (error) {
-        console.error('Ошибка при загрузке транспортных средств:', error);
+        console.error('🚗 General error loading vehicles:', error);
         message.error('Не удалось загрузить список транспортных средств');
         setVehicles(vehiclesData); // Используем тестовые данные в случае ошибки
       }

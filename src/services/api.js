@@ -131,12 +131,30 @@ export const fuelService = {
         data = response.data.data;
         count = response.data.count || data.length;
       } else if (response.data) {
-        // Если сервер вернул другой формат
-        data = response.data;
-        count = 0;
+        // Если сервер вернул другой формат, преобразуем в массив
+        if (typeof response.data === 'object' && !Array.isArray(response.data)) {
+          // Если это объект, но не массив, проверим наличие success и других полей API
+          if ('success' in response.data && 'data' in response.data) {
+            data = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+            count = response.data.count || data.length;
+          } else {
+            // Это может быть объект с транзакциями в виде свойств
+            data = Object.values(response.data);
+            count = data.length;
+          }
+        } else {
+          data = response.data;
+          count = 0;
+        }
       }
       
       console.log('Fuel transactions received:', count);
+      
+      // Проверяем, что data действительно массив
+      if (!Array.isArray(data)) {
+        console.warn('🔶 API: Data is not an array after processing, converting...');
+        data = data ? [data] : [];
+      }
       
       // Возвращаем данные в ожидаемом клиентом формате
       return {
@@ -153,10 +171,33 @@ export const fuelService = {
         console.log('🔍 API: Trying alternative URL /api/fuel/debug');
         return api.get('/fuel/debug').then(response => {
           console.log('🔍 API: Alternative request successful');
+          let data = [];
+          
+          if (Array.isArray(response.data)) {
+            data = response.data;
+          } else if (response.data && response.data.data) {
+            data = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+          } else if (response.data) {
+            // Если это объект, но не массив
+            if (typeof response.data === 'object' && !Array.isArray(response.data)) {
+              data = Object.values(response.data);
+            } else {
+              data = response.data ? [response.data] : [];
+            }
+          }
+          
+          // Проверяем, что data действительно массив
+          if (!Array.isArray(data)) {
+            console.warn('🔶 API: Debug data is not an array after processing, converting...');
+            data = data ? [data] : [];
+          }
+          
+          console.log('🔍 API: Debug endpoint processed data type:', typeof data);
+          console.log('🔍 API: Debug endpoint is array?', Array.isArray(data));
+          
           return {
-            data: Array.isArray(response.data) ? response.data : 
-                 (response.data && response.data.data ? response.data.data : []),
-            count: response.data.count || 0
+            data: data,
+            count: data.length
           };
         }).catch(altError => {
           console.error('🔥 API ERROR: Alternative request failed:', altError);

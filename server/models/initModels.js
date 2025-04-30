@@ -145,6 +145,7 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
     amount: {
         type: DataTypes.FLOAT,
         allowNull: true,
+        defaultValue: 0,
         validate: {
             min: { args: [0], msg: 'Количество топлива должно быть положительным числом' }
         }
@@ -225,11 +226,13 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
     timestamps: true,
     hooks: {
         beforeValidate: (transaction) => {
-            // Sync volume and amount fields
-            if (transaction.volume !== undefined && transaction.amount === undefined) {
-                transaction.amount = transaction.volume;
-            } else if (transaction.amount !== undefined && transaction.volume === undefined) {
-                transaction.volume = transaction.amount;
+            // Ensure amount and volume are never null or undefined
+            if (transaction.amount === undefined || transaction.amount === null) {
+                transaction.amount = transaction.volume || 0;
+            }
+            
+            if (transaction.volume === undefined || transaction.volume === null) {
+                transaction.volume = transaction.amount || 0;
             }
             
             // Convert timestamp to date if provided

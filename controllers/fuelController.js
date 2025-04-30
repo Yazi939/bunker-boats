@@ -91,6 +91,23 @@ exports.getTransactions = async (req, res) => {
       
       console.log(`Query returned ${rows.length} of ${count} total records`);
       
+      // Преобразование данных для клиента - убедимся, что все транзакции имеют объем
+      const processedRows = rows.map(transaction => {
+        const plainTransaction = transaction.get({ plain: true });
+        
+        // Если объем не указан, но есть amount, используем его как объем
+        if (plainTransaction.volume === undefined && plainTransaction.amount !== undefined) {
+          plainTransaction.volume = plainTransaction.amount;
+        }
+        
+        // Если нет timestamp, но есть date, преобразуем
+        if (plainTransaction.timestamp === undefined && plainTransaction.date) {
+          plainTransaction.timestamp = new Date(plainTransaction.date).getTime();
+        }
+        
+        return plainTransaction;
+      });
+      
       // Объект пагинации
       const pagination = {
         total: count,
@@ -117,9 +134,9 @@ exports.getTransactions = async (req, res) => {
       
       res.status(200).json({
         success: true,
-        count: rows.length,
+        count: processedRows.length,
         pagination,
-        data: rows
+        data: processedRows
       });
     } catch (queryError) {
       console.error('Error in basic query:', queryError);
@@ -189,9 +206,40 @@ exports.createTransaction = async (req, res) => {
   try {
     console.log('POST /api/fuel - Start with payload:', {
       type: req.body.type,
+      volume: req.body.volume,
       amount: req.body.amount,
       hasUserId: !!req.user
     });
+    
+    // Проверка необходимых полей
+    const requiredFields = ['type', 'price'];
+    const hasRequiredFields = requiredFields.every(field => req.body[field] !== undefined);
+    
+    if (!hasRequiredFields) {
+      return res.status(400).json({
+        success: false,
+        error: 'Пропущены обязательные поля: тип и цена'
+      });
+    }
+    
+    // Проверка на валидное количество (объем или amount)
+    if (req.body.volume === undefined && req.body.amount === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: 'Необходимо указать объем/количество топлива'
+      });
+    }
+
+    // Предварительная обработка даты и времени
+    if (req.body.timestamp && !req.body.date) {
+      req.body.date = new Date(req.body.timestamp);
+    }
+    
+    // Проверка и расчет totalCost
+    if (!req.body.totalCost && req.body.price) {
+      const quantity = req.body.volume || req.body.amount;
+      req.body.totalCost = Number(quantity) * Number(req.body.price);
+    }
     
     // Добавляем пользователя к транзакции
     if (req.user) {

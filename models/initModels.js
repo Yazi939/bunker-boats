@@ -136,7 +136,7 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
     },
     amount: {
         type: DataTypes.FLOAT,
-        allowNull: false,
+        allowNull: true,
         validate: {
             min: { args: [0], msg: 'Количество топлива должно быть положительным числом' }
         }
@@ -170,9 +170,58 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
     notes: {
         type: DataTypes.TEXT,
         allowNull: true
+    },
+    volume: {
+        type: DataTypes.FLOAT,
+        allowNull: false,
+        validate: {
+            min: { args: [0], msg: 'Объем должен быть положительным числом' }
+        }
+    },
+    frozen: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    edited: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    timestamp: {
+        type: DataTypes.BIGINT,
+        allowNull: true
+    },
+    supplier: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    customer: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    vessel: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    paymentMethod: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    key: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 }, {
-    timestamps: true
+    timestamps: true,
+    hooks: {
+        beforeValidate: (transaction) => {
+            if (transaction.volume && !transaction.amount) {
+                transaction.amount = transaction.volume;
+            }
+            if (transaction.timestamp && !transaction.date) {
+                transaction.date = new Date(transaction.timestamp);
+            }
+        }
+    }
 });
 
 // Определяем связи

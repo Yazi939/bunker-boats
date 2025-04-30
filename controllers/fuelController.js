@@ -6,7 +6,7 @@ const { Op } = require('sequelize');
 // @access  Private
 exports.getTransactions = async (req, res) => {
   try {
-    console.log('GET /api/fuel - Starting to process request');
+    console.log('GET /api/fuel - Starting to process request with query:', req.query);
     // Создаем базовый объект запроса
     let whereClause = {};
     
@@ -19,10 +19,24 @@ exports.getTransactions = async (req, res) => {
       whereClause.type = req.query.type;
     }
     
+    // Безопасная обработка диапазона дат
     if (req.query.startDate && req.query.endDate) {
-      whereClause.date = {
-        [Op.between]: [new Date(req.query.startDate), new Date(req.query.endDate)]
-      };
+      try {
+        const startDate = new Date(req.query.startDate);
+        const endDate = new Date(req.query.endDate);
+        
+        // Проверяем валидность дат
+        if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+          whereClause.date = {
+            [Op.between]: [startDate, endDate]
+          };
+        } else {
+          console.warn('Invalid date format in query:', req.query.startDate, req.query.endDate);
+        }
+      } catch (dateError) {
+        console.error('Error parsing dates:', dateError);
+        // Продолжаем выполнение запроса без фильтрации по дате
+      }
     }
     
     console.log('Where clause:', JSON.stringify(whereClause, null, 2));
@@ -35,24 +49,44 @@ exports.getTransactions = async (req, res) => {
     // Опции сортировки
     let order = [['date', 'DESC']]; // по умолчанию по дате в обратном порядке
     if (req.query.sort) {
-      const sortParams = req.query.sort.split(',');
-      order = sortParams.map(param => {
-        if (param.startsWith('-')) {
-          return [param.substring(1), 'DESC'];
+      try {
+        const sortParams = req.query.sort.split(',');
+        const validOrderOptions = [];
+        
+        sortParams.forEach(param => {
+          // Проверка на валидные поля для сортировки
+          let field = param.startsWith('-') ? param.substring(1) : param;
+          // Проверяем, что поле существует в модели
+          if (FuelTransaction.rawAttributes[field]) {
+            if (param.startsWith('-')) {
+              validOrderOptions.push([field, 'DESC']);
+            } else {
+              validOrderOptions.push([field, 'ASC']);
+            }
+          }
+        });
+        
+        // Используем validOrderOptions только если есть валидные поля
+        if (validOrderOptions.length > 0) {
+          order = validOrderOptions;
         }
-        return [param, 'ASC'];
-      });
+      } catch (sortError) {
+        console.error('Error processing sort parameters:', sortError);
+        // Продолжаем с сортировкой по умолчанию
+      }
     }
     
     console.log('Executing query with pagination:', { page, limit, offset });
     
-    // Сначала пробуем выполнить базовый запрос без связанных моделей
+    // Выполнение запроса с минимальным набором опций
     try {
       const { count, rows } = await FuelTransaction.findAndCountAll({
         where: whereClause,
         limit,
         offset,
-        order
+        order,
+        // Отключаем raw для безопасности
+        raw: false
       });
       
       console.log(`Query returned ${rows.length} of ${count} total records`);

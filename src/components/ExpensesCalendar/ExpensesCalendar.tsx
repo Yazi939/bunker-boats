@@ -16,6 +16,7 @@ const FUEL_TYPES = [
   { value: 'gasoline_95', label: 'Бензин АИ-95' }
 ];
 
+// Список всех типов операций с топливом
 const ALL_OPERATION_TYPES = [
   { value: 'purchase', label: 'Закупка', color: 'green' },
   { value: 'sale', label: 'Продажа', color: 'blue' },
@@ -26,7 +27,7 @@ const ALL_OPERATION_TYPES = [
   { value: 'repair', label: 'Ремонт', color: 'geekblue' }
 ];
 
-// Create a mutable copy of the options for the Select component
+// Опции для селекта
 const OPERATION_TYPE_OPTIONS = ALL_OPERATION_TYPES.map(type => ({
   value: type.value,
   label: type.label
@@ -38,13 +39,14 @@ const ExpensesCalendar: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedTransactions, setSelectedTransactions] = useState<FuelTransaction[]>([]);
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
-  const [selectedOperationTypes, setSelectedOperationTypes] = useState<FuelTransaction['type'][]>([]);
+  const [selectedOperationTypes, setSelectedOperationTypes] = useState<string[]>([]);
   const [selectedFuelTypes, setSelectedFuelTypes] = useState<string[]>([]);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [form] = Form.useForm();
   const currentUser = getCurrentUser();
   const isAdmin = currentUser?.role === 'admin';
 
+  // Фильтрация транзакций по выбранным критериям
   const filteredTransactions = transactions.filter(t => {
     const transactionDate = new Date(t.date);
     
@@ -62,85 +64,87 @@ const ExpensesCalendar: React.FC = () => {
     return matchesDate && matchesOperation && matchesFuel;
   });
 
+  // Загрузка данных при монтировании компонента
   useEffect(() => {
     console.log('Component mounted, loading transactions...');
     loadTransactions();
   }, []);
 
+  // Логирование изменений данных для отладки
   useEffect(() => {
-    console.log('Transactions updated:', transactions);
+    console.log('Transactions updated:', transactions.length);
   }, [transactions]);
 
   useEffect(() => {
-    console.log('Filtered transactions updated:', filteredTransactions);
+    console.log('Filtered transactions updated:', filteredTransactions.length);
   }, [filteredTransactions]);
 
+  // Функция загрузки транзакций с сервера
   const loadTransactions = async () => {
     try {
-      if (window.electronAPI) {
-        console.log('Fetching transactions from Electron API...');
-        const data = await window.electronAPI.transactions.getAll();
-        console.log('Received transactions:', JSON.stringify(data, null, 2));
-        
-        if (!Array.isArray(data)) {
-          console.error('Received data is not an array:', data);
-          return;
+      console.log('Trying to fetch from server API...');
+      try {
+        // Получаем данные с сервера
+        const response = await fetch('http://89.169.170.164:5000/api/fuel');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-
-        // Convert timestamps to local dates, considering timezone
-        const formattedData = data.map(t => {
-          let date;
-          if (t.date.includes(',')) {
-            // If date is in format "DD.MM.YYYY, HH:mm:ss"
-            const [datePart] = t.date.split(',');
-            const [day, month, year] = datePart.split('.');
-            date = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-          } else {
-            // If date is already in format "YYYY-MM-DD"
-            date = t.date;
-          }
-          return {
-            ...t,
-            date
-          };
-        });
-
-        console.log('Formatted data with local dates:', JSON.stringify(formattedData, null, 2));
-
-        setTransactions(formattedData);
-      } else {
-        console.warn('Electron API not available, using mock data');
-        // Generate mock data with today's date and previous days
-        const mockData: FuelTransaction[] = Array.from({ length: 30 }, (_, i) => {
-          const fuelTypes = ALL_OPERATION_TYPES;
-          const operationType = fuelTypes[Math.floor(Math.random() * fuelTypes.length)].value as FuelTransaction['type'];
-          const fuelType = FUEL_TYPES[Math.floor(Math.random() * FUEL_TYPES.length)].value;
-          const volume = Math.floor(Math.random() * 1000) + 100;
-          const price = Math.floor(Math.random() * 20) + 40;
-          const date = new Date();
-          date.setDate(date.getDate() - i);
+        const apiResponse = await response.json();
+        
+        if (apiResponse.success && Array.isArray(apiResponse.data)) {
+          console.log('Received transactions from server API:', apiResponse.data.length);
           
-          return {
-            key: String(i + 1),
-            type: operationType,
-            volume,
-            price,
-            totalCost: volume * price,
-            date: date.toISOString().split('T')[0],
-            timestamp: date.getTime(),
-            fuelType,
-            supplier: 'ООО Топливо',
-            paymentMethod: 'transfer'
-          };
-        });
-        console.log('Generated mock data:', mockData);
-        setTransactions(mockData);
+          // Форматируем данные
+          const formattedData = apiResponse.data.map((t: Record<string, any>) => ({
+            ...t,
+            key: String(t.id) || String(Math.random()),
+            date: t.date ? new Date(t.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+          }));
+          
+          setTransactions(formattedData);
+        } else {
+          console.error('Invalid API response format:', apiResponse);
+          throw new Error('Invalid API response format');
+        }
+      } catch (apiError) {
+        console.error('Error fetching from server API:', apiError);
+        useMockData();
       }
     } catch (error) {
       console.error('Error loading transactions:', error);
+      useMockData();
     }
   };
 
+  // Генерация тестовых данных
+  const useMockData = () => {
+    console.log('Generating mock transaction data...');
+    
+    const mockData: FuelTransaction[] = Array.from({ length: 30 }, (_, i) => {
+      const operationType = ALL_OPERATION_TYPES[Math.floor(Math.random() * ALL_OPERATION_TYPES.length)].value as FuelTransaction['type'];
+      const fuelType = FUEL_TYPES[Math.floor(Math.random() * FUEL_TYPES.length)].value;
+      const volume = Math.floor(Math.random() * 1000) + 100;
+      const price = Math.floor(Math.random() * 20) + 40;
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      
+      return {
+        key: String(i + 1),
+        type: operationType,
+        volume,
+        price,
+        totalCost: volume * price,
+        date: date.toISOString().split('T')[0],
+        timestamp: date.getTime(),
+        fuelType
+      } as FuelTransaction;
+    });
+    
+    console.log('Generated mock data:', mockData.length);
+    setTransactions(mockData);
+  };
+
+  // Расчет статистики
   const calculateStatistics = () => {
     const purchaseVolume = filteredTransactions
       .filter(t => t.type === 'purchase' && typeof t.volume === 'number' && !isNaN(t.volume))
@@ -162,11 +166,10 @@ const ExpensesCalendar: React.FC = () => {
       .filter(t => typeof t.volume === 'number' && !isNaN(t.volume))
       .reduce((sum, t) => sum + t.volume, 0);
 
-    // Включаем в totalCost все операции с totalCost или price (например, expense, salary, repair)
     const totalCost = filteredTransactions
       .reduce((sum, t) => sum + (t.totalCost != null ? t.totalCost : (t.price != null ? t.price : 0)), 0);
 
-    // Новый расчёт прибыли и замороженных средств
+    // Расчёт прибыли и замороженных средств
     const avgPurchasePrice = purchaseVolume > 0 ? purchaseCost / purchaseVolume : 0;
     const soldCost = saleVolume * avgPurchasePrice;
     const profit = saleCost - soldCost;
@@ -185,14 +188,15 @@ const ExpensesCalendar: React.FC = () => {
     };
   };
 
+  // Подготовка данных для графиков
   const getChartData = () => {
     const dailyData = filteredTransactions.reduce((acc, t) => {
       const date = t.date;
       if (!acc[date]) {
         acc[date] = { date, volume: 0, cost: 0 };
       }
-      acc[date].volume += t.volume;
-      acc[date].cost += t.totalCost;
+      acc[date].volume += t.volume || 0;
+      acc[date].cost += t.totalCost || 0;
       return acc;
     }, {} as Record<string, { date: string; volume: number; cost: number }>);
 
@@ -201,12 +205,13 @@ const ExpensesCalendar: React.FC = () => {
     );
   };
 
+  // Данные для круговой диаграммы
   const getPieData = () => {
     return ALL_OPERATION_TYPES.map(type => ({
       name: type.label,
       value: filteredTransactions
         .filter(t => t.type === type.value)
-        .reduce((sum, t) => sum + t.volume, 0),
+        .reduce((sum, t) => sum + (t.volume || 0), 0),
       color: type.color
     })).filter(item => item.value > 0);
   };
@@ -215,26 +220,20 @@ const ExpensesCalendar: React.FC = () => {
   const chartData = getChartData();
   const pieData = getPieData();
 
+  // Обработчики для календаря
   const onPanelChange = (value: Dayjs, mode: string) => {
     console.log(value.format('YYYY-MM-DD'), mode);
   };
 
   const onSelect = (date: Dayjs) => {
     try {
-      // Convert selected date to local timezone midnight
       const localDate = date.startOf('day');
       const dateStr = localDate.format('YYYY-MM-DD');
       console.log('Selected date (local):', dateStr);
-      console.log('All transactions:', JSON.stringify(transactions, null, 2));
       
-      // Find transactions for the selected date
-      const dayTransactions = transactions.filter(t => {
-        console.log('Checking transaction:', JSON.stringify(t, null, 2));
-        console.log('Transaction date:', t.date);
-        return t.date === dateStr;
-      });
+      const dayTransactions = transactions.filter(t => t.date === dateStr);
       
-      console.log('Found transactions for date:', JSON.stringify(dayTransactions, null, 2));
+      console.log('Found transactions for date:', dayTransactions.length);
       setSelectedDate(localDate);
       setSelectedTransactions(dayTransactions);
       setIsModalVisible(true);
@@ -244,45 +243,42 @@ const ExpensesCalendar: React.FC = () => {
     }
   };
 
+  // Рендер ячеек календаря
   const dateCellRender = (date: Dayjs) => {
     try {
-      // Convert cell date to local timezone midnight
       const localDate = date.startOf('day');
       const dateStr = localDate.format('YYYY-MM-DD');
+      
       const dayTransactions = transactions.filter(t => t.date === dateStr);
       
-      if (dayTransactions.length === 0) return null;
-
-      const totalVolume = dayTransactions
-        .filter(t => t && typeof t.volume === 'number' && !isNaN(t.volume))
-        .reduce((sum, t) => {
-          const volume = Number(t.volume);
-          return sum + (isNaN(volume) ? 0 : volume);
-        }, 0);
-
-      const totalCost = dayTransactions
-        .filter(t => t && (typeof t.totalCost === 'number' || typeof t.price === 'number'))
-        .reduce((sum, t) => {
-          const cost = Number(t.totalCost || t.price || 0);
-          return sum + (isNaN(cost) ? 0 : cost);
-        }, 0);
-
+      if (dayTransactions.length === 0) {
+        return null;
+      }
+      
+      // Group by type
+      const groups = dayTransactions.reduce((acc, t) => {
+        if (!acc[t.type]) {
+          acc[t.type] = [];
+        }
+        acc[t.type].push(t);
+        return acc;
+      }, {} as Record<string, FuelTransaction[]>);
+      
       return (
-        <div className="calendar-cell" onClick={() => onSelect(localDate)}>
-          <div className="transactions-count">{dayTransactions.length} операций</div>
-          <div className="transactions-volume">{totalVolume.toFixed(2)} л</div>
-          <div className="transactions-cost">{totalCost.toFixed(2)} ₽</div>
-          <div className="transactions-types">
-            {Array.from(new Set(dayTransactions.map(t => t.type))).map((type, index) => {
-              const operation = ALL_OPERATION_TYPES.find(ot => ot.value === type);
-              return operation ? (
-                <Tag key={index} color={operation.color} style={{ marginRight: 4 }}>
-                  {operation.label}
+        <ul className="transaction-list">
+          {Object.entries(groups).map(([type, transactions]) => {
+            const operationType = ALL_OPERATION_TYPES.find(t => t.value === type);
+            const totalCost = transactions.reduce((sum, t) => sum + (t.totalCost || t.price || 0), 0);
+            
+            return (
+              <li key={type}>
+                <Tag color={operationType?.color || 'default'}>
+                  {transactions.length} x {operationType?.label || type}: {totalCost.toFixed(0)} ₽
                 </Tag>
-              ) : null;
-            })}
-          </div>
-        </div>
+              </li>
+            );
+          })}
+        </ul>
       );
     } catch (error) {
       console.error('Error in dateCellRender:', error);
@@ -290,142 +286,187 @@ const ExpensesCalendar: React.FC = () => {
     }
   };
 
+  // Обработчик добавления новой операции
   const handleAddOperation = async (values: any) => {
     try {
       const { type, fuelType, volume, price, notes } = values;
-      const totalCost = volume * price;
-      const newOperation = {
-        key: Date.now().toString(),
-        type,
-        fuelType,
-        volume,
-        price,
-        totalCost,
-        date: selectedDate?.format('YYYY-MM-DD') || new Date().toISOString().split('T')[0],
-        timestamp: Date.now(),
-        supplier: 'Добавлено вручную',
-        paymentMethod: 'transfer',
-        notes
-      };
-
-      if (window.electronAPI) {
-        await window.electronAPI.transactions.add(newOperation);
-        // Обновляем список транзакций
-        const updatedTransactions = await window.electronAPI.transactions.getAll();
-        const formattedData = updatedTransactions.map(t => {
-          let date;
-          if (t.date.includes(',')) {
-            const [datePart] = t.date.split(',');
-            const [day, month, year] = datePart.split('.');
-            date = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-          } else {
-            date = t.date;
-          }
-          return {
-            ...t,
-            date
-          };
-        });
-        
-        setTransactions(formattedData);
-        // Обновляем список выбранных транзакций
-        const dayTransactions = formattedData.filter(t => t.date === selectedDate?.format('YYYY-MM-DD'));
-        setSelectedTransactions(dayTransactions);
+      
+      const date = selectedDate?.format('YYYY-MM-DD') || new Date().toISOString().split('T')[0];
+      const timestamp = new Date(date).getTime();
+      
+      let totalCost;
+      if (["expense", "salary", "repair"].includes(type)) {
+        totalCost = price;
+      } else {
+        totalCost = volume * price;
       }
       
-      message.success('Операция добавлена успешно');
-      setIsAddModalVisible(false);
-      form.resetFields();
+      const newTransaction: FuelTransaction = {
+        key: String(Math.random()),
+        type: type as FuelTransaction['type'],
+        fuelType: fuelType || '',
+        volume: volume || 0,
+        price: price || 0,
+        totalCost,
+        date,
+        timestamp,
+        notes: notes || '',
+        userId: currentUser?.id || '',
+        userRole: currentUser?.role || ''
+      };
+      
+      console.log('Creating new transaction:', newTransaction);
+      
+      try {
+        const response = await fetch('http://89.169.170.164:5000/api/fuel', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(newTransaction)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('Transaction created:', result);
+        
+        // Refresh transactions
+        await loadTransactions();
+        
+        message.success('Операция успешно добавлена');
+        setIsAddModalVisible(false);
+        form.resetFields();
+      } catch (error) {
+        console.error('Error creating transaction:', error);
+        message.error('Ошибка при добавлении операции');
+      }
     } catch (error) {
-      console.error('Error adding operation:', error);
-      message.error('Ошибка при добавлении операции');
+      console.error('Error in handleAddOperation:', error);
+      message.error('Произошла ошибка при добавлении операции');
     }
   };
 
+  // Обработчик удаления операции
   const handleDeleteOperation = async (operationKey: string) => {
     try {
-      if (window.electronAPI) {
-        await window.electronAPI.transactions.delete(operationKey);
-        const updatedTransactions = await window.electronAPI.transactions.getAll();
-        setTransactions(updatedTransactions);
-        setSelectedTransactions(selectedTransactions.filter(t => t.key !== operationKey));
+      const transaction = transactions.find(t => t.key === operationKey);
+      if (!transaction) {
+        message.error('Операция не найдена');
+        return;
       }
-      message.success('Операция удалена успешно');
+      
+      console.log('Deleting transaction:', transaction);
+      
+      try {
+        const response = await fetch(`http://89.169.170.164:5000/api/fuel/${transaction.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('Transaction deleted:', result);
+        
+        // Refresh transactions
+        await loadTransactions();
+        
+        message.success('Операция успешно удалена');
+        
+        // Update selected transactions if modal is open
+        if (isModalVisible && selectedDate) {
+          const dateStr = selectedDate.format('YYYY-MM-DD');
+          const updatedDayTransactions = transactions.filter(t => t.date === dateStr && t.key !== operationKey);
+          setSelectedTransactions(updatedDayTransactions);
+        }
+      } catch (error) {
+        console.error('Error deleting transaction:', error);
+        message.error('Ошибка при удалении операции');
+      }
     } catch (error) {
-      console.error('Error deleting operation:', error);
-      message.error('Ошибка при удалении операции');
+      console.error('Error in handleDeleteOperation:', error);
+      message.error('Произошла ошибка при удалении операции');
     }
   };
 
+  // Колонки для таблицы транзакций
   const columns: ColumnsType<FuelTransaction> = [
     {
-      title: 'Тип операции',
+      title: 'Тип',
       dataIndex: 'type',
       key: 'type',
-      render: (type: string) => {
-        const typeMap: Record<string, { color: string; text: string }> = {
-          purchase: { color: 'green', text: 'Закупка' },
-          sale: { color: 'blue', text: 'Продажа' },
-          base_to_bunker: { color: 'orange', text: 'На бункер' },
-          bunker_to_base: { color: 'purple', text: 'С бункера' },
-          expense: { color: 'red', text: 'Общие расходы' }
-        };
-        const { color, text } = typeMap[type] || { color: 'default', text: type };
-        return <Tag color={color}>{text}</Tag>;
+      render: (type) => {
+        const operationType = ALL_OPERATION_TYPES.find(t => t.value === type);
+        return (
+          <Tag color={operationType?.color || 'default'}>
+            {operationType?.label || type}
+          </Tag>
+        );
       }
     },
     {
-      title: 'Тип топлива',
+      title: 'Топливо',
       dataIndex: 'fuelType',
       key: 'fuelType',
-      render: (fuelType: string) => FUEL_TYPES.find(t => t.value === fuelType)?.label || fuelType
+      render: (fuelType) => {
+        const fuelTypeObj = FUEL_TYPES.find(t => t.value === fuelType);
+        return fuelTypeObj?.label || fuelType;
+      }
     },
     {
       title: 'Объем (л)',
       dataIndex: 'volume',
       key: 'volume',
-      render: (volume: number | string | undefined | null) => {
-        if (volume === undefined || volume === null) return '-';
-        const numValue = typeof volume === 'string' ? parseFloat(volume) : volume;
-        return numValue.toFixed(2);
-      }
+      render: (volume) => volume ? volume.toFixed(2) : '-'
     },
     {
       title: 'Цена (₽/л)',
       dataIndex: 'price',
       key: 'price',
-      render: (price: number | string | undefined | null) => {
-        if (price === undefined || price === null) return '-';
-        const numValue = typeof price === 'string' ? parseFloat(price) : price;
-        return numValue.toFixed(2);
+      render: (price, record) => {
+        if (["expense", "salary", "repair"].includes(record.type)) {
+          return '—';
+        }
+        return price ? price.toFixed(2) : '-';
       }
     },
     {
       title: 'Сумма (₽)',
       dataIndex: 'totalCost',
       key: 'totalCost',
-      render: (totalCost: number | string | undefined | null) => {
-        if (totalCost === undefined || totalCost === null) return '-';
-        const numValue = typeof totalCost === 'string' ? parseFloat(totalCost) : totalCost;
-        return numValue.toFixed(2);
+      render: (totalCost, record) => {
+        if (["expense", "salary", "repair"].includes(record.type)) {
+          return record.price ? record.price.toFixed(2) : '-';
+        }
+        return totalCost ? totalCost.toFixed(2) : '-';
       }
     },
     {
-      title: 'Примечания',
+      title: 'Заметки',
       dataIndex: 'notes',
       key: 'notes',
-      render: (notes?: string) => notes || '-'
+      ellipsis: true
     },
     {
       title: 'Действия',
-      key: 'actions',
+      key: 'action',
+      width: 70,
       render: (_, record) => (
         isAdmin && (
-          <Button
-            type="text"
-            danger
+          <Button 
+            type="text" 
+            danger 
             icon={<DeleteOutlined />}
             onClick={() => handleDeleteOperation(record.key)}
+            title="Удалить операцию"
           />
         )
       )
@@ -433,137 +474,131 @@ const ExpensesCalendar: React.FC = () => {
   ];
 
   return (
-    <Card title="Календарь расходов топлива" className="expenses-calendar">
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <Row gutter={16}>
-          <Col span={24}>
-            <Space>
-              <RangePicker
-                value={dateRange}
-                onChange={(dates) => {
-                  if (dates && dates[0] && dates[1]) {
-                    setDateRange([dates[0].startOf('day'), dates[1].endOf('day')]);
-                  } else {
-                    setDateRange(null);
-                  }
-                }}
-                style={{ width: 300 }}
-              />
-              <Select<FuelTransaction['type'][]>
-                mode="multiple"
-                placeholder="Типы операций"
-                style={{ width: 200 }}
-                value={selectedOperationTypes}
-                onChange={setSelectedOperationTypes}
-                options={OPERATION_TYPE_OPTIONS}
-              />
-              <Select
-                mode="multiple"
-                placeholder="Типы топлива"
-                style={{ width: 200 }}
-                value={selectedFuelTypes}
-                onChange={setSelectedFuelTypes}
-                options={FUEL_TYPES}
-              />
-            </Space>
-          </Col>
-        </Row>
+    <Card title="Календарь операций" className="calendar-card">
+      <Row gutter={[16, 16]}>
+        <Col span={24}>
+          <Space size={16} style={{ marginBottom: 16 }}>
+            <RangePicker
+              onChange={(dates) => {
+                if (dates) {
+                  setDateRange([dates[0], dates[1]]);
+                } else {
+                  setDateRange(null);
+                }
+              }}
+              style={{ width: 300 }}
+            />
+            <Select<string[]>
+              mode="multiple"
+              placeholder="Типы операций"
+              onChange={values => setSelectedOperationTypes(values)}
+              style={{ width: 300 }}
+              options={OPERATION_TYPE_OPTIONS}
+            />
+            <Select<string[]>
+              mode="multiple"
+              placeholder="Типы топлива"
+              onChange={values => setSelectedFuelTypes(values)}
+              style={{ width: 300 }}
+              options={FUEL_TYPES}
+            />
+          </Space>
+        </Col>
 
-        <Row gutter={16}>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="Общий объем"
-                value={statistics.totalVolume}
-                suffix="л"
-                precision={2}
-              />
-              <div style={{ height: 20 }} />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="Общая стоимость"
-                value={statistics.totalCost}
-                suffix="₽"
-                precision={2}
-              />
-              <div style={{ height: 20 }} />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="Прибыль"
-                value={statistics.profit}
-                suffix="₽"
-                precision={2}
-                valueStyle={{ color: statistics.profit >= 0 ? '#3f8600' : '#cf1322' }}
-              />
-              <div style={{ color: '#1890ff', fontSize: 13, marginTop: 4 }}>
-                Заморожено: {statistics.frozenCost.toFixed(2)} ₽
-              </div>
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="Количество операций"
-                value={filteredTransactions.length}
-              />
-              <div style={{ height: 20 }} />
-            </Card>
-          </Col>
-        </Row>
+        <Col span={24} lg={16}>
+          <div className="calendar-container">
+            <Calendar
+              dateCellRender={dateCellRender}
+              onSelect={onSelect}
+              onPanelChange={onPanelChange}
+            />
+          </div>
+        </Col>
 
-        <Row gutter={16}>
-          <Col span={12}>
-            <Card title="Расход топлива по дням">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
-                  <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
-                  <Tooltip />
-                  <Bar yAxisId="left" dataKey="volume" name="Объем (л)" fill="#8884d8" />
-                  <Bar yAxisId="right" dataKey="cost" name="Стоимость (₽)" fill="#82ca9d" />
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
-          </Col>
-          <Col span={12}>
-            <Card title="Распределение по типам операций">
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </Card>
-          </Col>
-        </Row>
+        <Col span={24} lg={8}>
+          <Card title="Статистика" className="stats-card">
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Statistic title="Общий объем" value={statistics.totalVolume} suffix="л" precision={2} />
+              </Col>
+              <Col span={12}>
+                <Statistic title="Общая сумма" value={statistics.totalCost} suffix="₽" precision={2} />
+              </Col>
+              <Col span={12}>
+                <Statistic title="Закуплено" value={statistics.purchaseVolume} suffix="л" precision={2} />
+              </Col>
+              <Col span={12}>
+                <Statistic title="Сумма закупок" value={statistics.purchaseCost} suffix="₽" precision={2} />
+              </Col>
+              <Col span={12}>
+                <Statistic title="Продано" value={statistics.saleVolume} suffix="л" precision={2} />
+              </Col>
+              <Col span={12}>
+                <Statistic title="Сумма продаж" value={statistics.saleCost} suffix="₽" precision={2} />
+              </Col>
+              <Col span={12}>
+                <Statistic
+                  title="Прибыль"
+                  value={statistics.profit}
+                  suffix="₽"
+                  precision={2}
+                  valueStyle={{ color: statistics.profit >= 0 ? '#3f8600' : '#cf1322' }}
+                />
+              </Col>
+              <Col span={12}>
+                <Statistic
+                  title="Заморожено средств"
+                  value={statistics.frozenCost}
+                  suffix="₽"
+                  precision={2}
+                />
+              </Col>
+            </Row>
+          </Card>
 
-        <Calendar 
-          onPanelChange={onPanelChange}
-          onSelect={onSelect}
-          dateCellRender={dateCellRender}
-        />
-      </Space>
+          <Divider />
+
+          <Card title="Объем по операциям" className="pie-chart-card">
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  outerRadius={80}
+                  dataKey="value"
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => `${Number(value).toFixed(2)} л`} />
+              </PieChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+
+        <Col span={24}>
+          <Card title="График объемов и стоимости">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart
+                data={chartData}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
+                <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
+                <Tooltip />
+                <Bar yAxisId="left" dataKey="volume" name="Объем (л)" fill="#8884d8" />
+                <Bar yAxisId="right" dataKey="cost" name="Стоимость (₽)" fill="#82ca9d" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+      </Row>
 
       <Modal
         title={selectedDate ? `Операции за ${selectedDate.format('DD.MM.YYYY')}` : 'Операции'}
@@ -716,4 +751,4 @@ const ExpensesCalendar: React.FC = () => {
   );
 };
 
-export default ExpensesCalendar; 
+export default ExpensesCalendar;

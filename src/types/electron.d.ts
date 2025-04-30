@@ -15,17 +15,21 @@ export interface ElectronAPI {
   getAppVersion: () => string;
   isElectron: boolean;
   appReady: () => boolean;
+  checkForUpdates?: () => void;
+  installUpdate?: () => void;
+  onUpdateStatus?: (callback: (status: string, info: any) => void) => void;
+  onUpdateProgress?: (callback: (progress: any) => void) => void;
 }
 
 declare global {
   interface Window {
-    electronAPI: ElectronAPI;
+    electronAPI?: ElectronAPI;
   }
 }
 
 export interface FuelTransaction {
   key: string;
-  type: 'purchase' | 'sale' | 'drain' | 'base_to_bunker' | 'bunker_to_base';
+  type: 'purchase' | 'sale' | 'drain' | 'base_to_bunker' | 'bunker_to_base' | 'expense' | 'salary' | 'repair';
   volume: number;
   price: number;
   totalCost: number;

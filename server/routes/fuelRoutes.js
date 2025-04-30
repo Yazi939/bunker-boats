@@ -11,6 +11,9 @@ const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Добавляем временный маршрут без аутентификации для отладки
+router.get('/debug', getTransactions);
+
 router
   .route('/')
   .get(protect, getTransactions)

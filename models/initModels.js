@@ -127,7 +127,7 @@ const Shift = sequelize.define('Shift', {
 const FuelTransaction = sequelize.define('FuelTransaction', {
     date: {
         type: DataTypes.DATE,
-        allowNull: false,
+        allowNull: true,
         defaultValue: DataTypes.NOW
     },
     type: {
@@ -143,21 +143,23 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
     },
     price: {
         type: DataTypes.FLOAT,
-        allowNull: false,
+        allowNull: true,
+        defaultValue: 0,
         validate: {
             min: { args: [0], msg: 'Цена топлива должна быть положительным числом' }
         }
     },
     totalCost: {
         type: DataTypes.FLOAT,
-        allowNull: false,
+        allowNull: true,
+        defaultValue: 0,
         validate: {
             min: { args: [0], msg: 'Общая стоимость должна быть положительным числом' }
         }
     },
     fuelType: {
         type: DataTypes.ENUM('diesel', 'gasoline', 'gasoline_95', 'gasoline_92'),
-        defaultValue: 'diesel'
+        defaultValue: 'gasoline_95'
     },
     source: {
         type: DataTypes.STRING,
@@ -173,7 +175,8 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
     },
     volume: {
         type: DataTypes.FLOAT,
-        allowNull: false,
+        allowNull: true,
+        defaultValue: 0,
         validate: {
             min: { args: [0], msg: 'Объем должен быть положительным числом' }
         }
@@ -214,11 +217,26 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
     timestamps: true,
     hooks: {
         beforeValidate: (transaction) => {
-            if (transaction.volume && !transaction.amount) {
+            if (transaction.volume !== undefined && transaction.amount === undefined) {
                 transaction.amount = transaction.volume;
+            } else if (transaction.amount !== undefined && transaction.volume === undefined) {
+                transaction.volume = transaction.amount;
             }
-            if (transaction.timestamp && !transaction.date) {
-                transaction.date = new Date(transaction.timestamp);
+            
+            if (transaction.timestamp !== undefined) {
+                try {
+                    transaction.date = new Date(transaction.timestamp);
+                } catch (e) {
+                    console.error('Error converting timestamp to date:', e);
+                }
+            } else if (!transaction.date) {
+                transaction.date = new Date();
+            }
+            
+            if (transaction.totalCost === undefined && transaction.price !== undefined && 
+               (transaction.volume !== undefined || transaction.amount !== undefined)) {
+                const quantity = transaction.volume !== undefined ? transaction.volume : transaction.amount;
+                transaction.totalCost = Number(quantity) * Number(transaction.price);
             }
         }
     }

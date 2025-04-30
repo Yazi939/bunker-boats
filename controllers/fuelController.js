@@ -6,7 +6,15 @@ const { Op } = require('sequelize');
 // @access  Private
 exports.getTransactions = async (req, res) => {
   try {
-    console.log('GET /api/fuel - Starting to process request with query:', req.query);
+    console.log('GET /api/fuel - Starting to process request');
+    console.log('Request query:', JSON.stringify(req.query));
+    console.log('Request headers:', JSON.stringify(req.headers));
+    console.log('User info:', req.user);
+    
+    // Фиксируем потенциальные проблемы
+    console.log('🔧 DEBUG: Path:', req.path);
+    console.log('🔧 DEBUG: RequestID:', req.id || 'None');
+    
     // Создаем базовый объект запроса
     let whereClause = {};
     
@@ -80,6 +88,7 @@ exports.getTransactions = async (req, res) => {
     
     // Выполнение запроса с минимальным набором опций
     try {
+      // Выполняем запрос
       const { count, rows } = await FuelTransaction.findAndCountAll({
         where: whereClause,
         limit,
@@ -95,14 +104,34 @@ exports.getTransactions = async (req, res) => {
       const processedRows = rows.map(transaction => {
         const plainTransaction = transaction.get({ plain: true });
         
+        // Генерируем key, если его нет
+        if (!plainTransaction.key) {
+          plainTransaction.key = `transaction-${plainTransaction.id}`;
+        }
+        
         // Если объем не указан, но есть amount, используем его как объем
         if (plainTransaction.volume === undefined && plainTransaction.amount !== undefined) {
           plainTransaction.volume = plainTransaction.amount;
+        } else if (plainTransaction.volume === undefined) {
+          plainTransaction.volume = 0;
         }
         
         // Если нет timestamp, но есть date, преобразуем
         if (plainTransaction.timestamp === undefined && plainTransaction.date) {
           plainTransaction.timestamp = new Date(plainTransaction.date).getTime();
+        }
+        
+        // Проверяем наличие необходимых полей
+        if (plainTransaction.fuelType === undefined) {
+          plainTransaction.fuelType = 'gasoline_95';
+        }
+        
+        if (plainTransaction.price === undefined) {
+          plainTransaction.price = 0;
+        }
+        
+        if (plainTransaction.totalCost === undefined) {
+          plainTransaction.totalCost = plainTransaction.volume * plainTransaction.price;
         }
         
         return plainTransaction;
@@ -132,12 +161,19 @@ exports.getTransactions = async (req, res) => {
       
       console.log('GET /api/fuel - Successfully completed');
       
-      res.status(200).json({
+      // Проверяем ожидаемую структуру ответа
+      const responseData = {
         success: true,
         count: processedRows.length,
         pagination,
         data: processedRows
-      });
+      };
+      
+      console.log('Response data structure:', Object.keys(responseData));
+      console.log('Sample record:', processedRows.length > 0 ? 
+        JSON.stringify(processedRows[0], null, 2).substring(0, 200) + '...' : 'No records');
+      
+      res.status(200).json(responseData);
     } catch (queryError) {
       console.error('Error in basic query:', queryError);
       // В случае ошибки в запросе, отправляем упрощенный ответ
@@ -204,49 +240,93 @@ exports.getTransaction = async (req, res) => {
 // @access  Private
 exports.createTransaction = async (req, res) => {
   try {
-    console.log('POST /api/fuel - Start with payload:', {
+    console.log('POST /api/fuel - START REQUEST');
+    console.log('Body (partial):', JSON.stringify({
       type: req.body.type,
       volume: req.body.volume,
       amount: req.body.amount,
+      price: req.body.price,
+      fuelType: req.body.fuelType,
+      key: req.body.key,
+      totalCost: req.body.totalCost,
       hasUserId: !!req.user
-    });
+    }));
+    
+    // Клонируем req.body для безопасного изменения
+    const processedData = { ...req.body };
     
     // Проверка необходимых полей
-    const requiredFields = ['type', 'price'];
-    const hasRequiredFields = requiredFields.every(field => req.body[field] !== undefined);
-    
-    if (!hasRequiredFields) {
+    if (!processedData.type) {
+      console.error('Missing required field: type');
       return res.status(400).json({
         success: false,
-        error: 'Пропущены обязательные поля: тип и цена'
+        error: 'Не указан тип транзакции'
       });
     }
     
-    // Проверка на валидное количество (объем или amount)
-    if (req.body.volume === undefined && req.body.amount === undefined) {
+    // Проверка и установка количества/объема
+    if (processedData.volume !== undefined) {
+      // Если указан volume, используем его
+      if (processedData.amount === undefined) {
+        processedData.amount = processedData.volume;
+      }
+    } else if (processedData.amount !== undefined) {
+      // Если указан только amount, создаем volume
+      processedData.volume = processedData.amount;
+    } else {
+      console.error('Missing required field: volume/amount');
       return res.status(400).json({
         success: false,
-        error: 'Необходимо указать объем/количество топлива'
+        error: 'Не указан объем топлива'
       });
     }
-
-    // Предварительная обработка даты и времени
-    if (req.body.timestamp && !req.body.date) {
-      req.body.date = new Date(req.body.timestamp);
+    
+    // Проверка цены
+    if (processedData.price === undefined) {
+      console.error('Missing required field: price');
+      return res.status(400).json({
+        success: false,
+        error: 'Не указана цена топлива'
+      });
     }
     
-    // Проверка и расчет totalCost
-    if (!req.body.totalCost && req.body.price) {
-      const quantity = req.body.volume || req.body.amount;
-      req.body.totalCost = Number(quantity) * Number(req.body.price);
+    // Расчет totalCost
+    if (processedData.totalCost === undefined) {
+      processedData.totalCost = Number(processedData.volume) * Number(processedData.price);
+    }
+    
+    // Проверка fuelType и установка значения по умолчанию
+    if (processedData.fuelType === undefined) {
+      processedData.fuelType = 'gasoline_95';
+    }
+    
+    // Преобразование даты
+    if (processedData.timestamp && !processedData.date) {
+      try {
+        processedData.date = new Date(processedData.timestamp);
+      } catch (dateError) {
+        console.error('Error converting timestamp to date:', dateError);
+        // Если неудачно, используем текущую дату
+        processedData.date = new Date();
+      }
+    } else if (!processedData.date) {
+      processedData.date = new Date();
     }
     
     // Добавляем пользователя к транзакции
     if (req.user) {
-      req.body.userId = req.user.id;
+      processedData.userId = req.user.id;
     }
     
-    const transaction = await FuelTransaction.create(req.body);
+    console.log('Sanitized data for create:', {
+      type: processedData.type,
+      fuelType: processedData.fuelType,
+      volume: processedData.volume,
+      price: processedData.price,
+      totalCost: processedData.totalCost
+    });
+    
+    const transaction = await FuelTransaction.create(processedData);
     console.log(`Transaction created with ID: ${transaction.id}`);
     
     res.status(201).json({
@@ -255,6 +335,16 @@ exports.createTransaction = async (req, res) => {
     });
   } catch (error) {
     console.error('Error in createTransaction:', error);
+    
+    // Специфичная обработка ошибок валидации Sequelize
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({
+        success: false,
+        error: 'Ошибка валидации данных',
+        details: error.errors.map(e => e.message)
+      });
+    }
+    
     res.status(400).json({
       success: false,
       error: error.message,

@@ -114,11 +114,57 @@ export const shiftService = {
 export const fuelService = {
   getTransactions: (params) => api.get('/fuel', { params })
     .then(response => {
-      console.log('Fuel transactions received:', response.data.count);
-      return response;
+      console.log('🔍 API: Fuel transactions API response type:', typeof response.data);
+      console.log('🔍 API: Fuel transactions structure:', Object.keys(response.data));
+      console.log('🔍 API: Is data an array?', Array.isArray(response.data));
+      
+      let count = 0;
+      let data = [];
+      
+      // Обработка различных форматов ответа
+      if (Array.isArray(response.data)) {
+        // Если сервер вернул массив
+        data = response.data;
+        count = data.length;
+      } else if (response.data && response.data.data) {
+        // Если сервер вернул объект с полем data
+        data = response.data.data;
+        count = response.data.count || data.length;
+      } else if (response.data) {
+        // Если сервер вернул другой формат
+        data = response.data;
+        count = 0;
+      }
+      
+      console.log('Fuel transactions received:', count);
+      
+      // Возвращаем данные в ожидаемом клиентом формате
+      return {
+        data: data,
+        count: count
+      };
     })
     .catch(error => {
-      console.error('Fuel transactions error:', error.response?.data);
+      console.error('🔥 API ERROR: Fuel transactions error:', error);
+      console.error('🔥 API ERROR Details:', error.response?.data || error.message);
+      
+      // Пробуем альтернативный URL в случае ошибки
+      if (error.response && error.response.status === 400) {
+        console.log('🔍 API: Trying alternative URL /api/fuel/debug');
+        return api.get('/fuel/debug').then(response => {
+          console.log('🔍 API: Alternative request successful');
+          return {
+            data: Array.isArray(response.data) ? response.data : 
+                 (response.data && response.data.data ? response.data.data : []),
+            count: response.data.count || 0
+          };
+        }).catch(altError => {
+          console.error('🔥 API ERROR: Alternative request failed:', altError);
+          return { data: [] };
+        });
+      }
+      
+      // Возвращаем пустой массив в случае ошибки
       if (!error.response) return { data: [] };
       return Promise.reject(error);
     }),

@@ -82,7 +82,7 @@ const mockTransactions = [
     totalCost: 35000,
     date: '2023-01-25',
     timestamp: 1674604800000,
-    notes: 'Зарплата экипажу'
+    notes: 'Зарплата персоналу'
   },
   {
     key: '4',
@@ -94,11 +94,11 @@ const mockTransactions = [
   }
 ];
 
-// Обновленная схема транзакций с добавлением заработной платы
+// Обновленная схема транзакций
 interface FuelTransaction {
   key: string;
   id?: string | number;
-  type: 'purchase' | 'sale' | 'base_to_bunker' | 'bunker_to_base' | 'expense' | 'salary' | 'repair';
+  type: 'purchase' | 'sale' | 'expense' | 'salary' | 'repair';
   volume?: number;
   price?: number;
   totalCost: number;
@@ -107,7 +107,6 @@ interface FuelTransaction {
   fuelType?: string;
   supplier?: string;
   customer?: string;
-  vessel?: string;
   frozen?: boolean;
   frozenDate?: number;
   paymentMethod?: 'cash' | 'card' | 'transfer' | 'deferred';
@@ -129,8 +128,7 @@ const Dashboard: React.FC = () => {
 
   // Статистические данные
   const [fuelStats, setFuelStats] = useState({
-    baseBalance: 0,
-    bunkerBalance: 0,
+    totalBalance: 0,
     totalPurchased: 0,
     totalSold: 0,
     purchaseCost: 0,
@@ -258,23 +256,15 @@ const Dashboard: React.FC = () => {
     const purchased = filteredTransactions
       .filter(t => t.type === 'purchase')
       .reduce((sum, t) => sum + (t.volume || 0), 0);
-      
+    
     const sold = filteredTransactions
       .filter(t => t.type === 'sale')
       .reduce((sum, t) => sum + (t.volume || 0), 0);
-      
-    const baseToBunker = filteredTransactions
-      .filter(t => t.type === 'base_to_bunker')
-      .reduce((sum, t) => sum + (t.volume || 0), 0);
-      
-    const bunkerToBase = filteredTransactions
-      .filter(t => t.type === 'bunker_to_base')
-      .reduce((sum, t) => sum + (t.volume || 0), 0);
-      
+    
     const purchaseCost = filteredTransactions
       .filter(t => t.type === 'purchase')
       .reduce((sum, t) => sum + t.totalCost, 0);
-      
+    
     const salesIncome = filteredTransactions
       .filter(t => t.type === 'sale')
       .reduce((sum, t) => sum + t.totalCost, 0);
@@ -296,8 +286,7 @@ const Dashboard: React.FC = () => {
 
     // Обновляем статистику по топливу
     setFuelStats({
-      baseBalance: purchased - sold - baseToBunker + bunkerToBase,
-      bunkerBalance: baseToBunker - bunkerToBase,
+      totalBalance: purchased - sold,
       totalPurchased: purchased,
       totalSold: sold,
       purchaseCost,
@@ -437,11 +426,11 @@ const Dashboard: React.FC = () => {
             <Col xs={24} sm={12} lg={6}>
               <Card>
                 <Statistic
-                  title="Остаток на базе"
-                  value={fuelStats.baseBalance}
+                  title="Общий остаток топлива"
+                  value={fuelStats.totalBalance}
                   precision={2}
                   suffix="л"
-                  valueStyle={{ color: fuelStats.baseBalance > 0 ? '#3f8600' : '#cf1322' }}
+                  valueStyle={{ color: fuelStats.totalBalance > 0 ? '#3f8600' : '#cf1322' }}
                 />
               </Card>
             </Col>
@@ -449,11 +438,11 @@ const Dashboard: React.FC = () => {
             <Col xs={24} sm={12} lg={6}>
               <Card>
                 <Statistic
-                  title="Остаток на бункеровщике"
-                  value={fuelStats.bunkerBalance}
+                  title="Всего закуплено"
+                  value={fuelStats.totalPurchased}
                   precision={2}
                   suffix="л"
-                  valueStyle={{ color: fuelStats.bunkerBalance > 0 ? '#3f8600' : '#cf1322' }}
+                  valueStyle={{ color: '#3f8600' }}
                 />
               </Card>
             </Col>
@@ -482,7 +471,7 @@ const Dashboard: React.FC = () => {
               </Card>
             </Col>
           </Row>
-          
+
           <Divider />
           
           {/* График по топливу */}
@@ -505,7 +494,7 @@ const Dashboard: React.FC = () => {
                 </ResponsiveContainer>
               </Card>
             </Col>
-            
+
             {/* График расходов */}
             <Col xs={24} lg={12}>
               <Card title="Структура расходов">

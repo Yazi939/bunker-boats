@@ -14,12 +14,12 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const onFinish = async (values: { email: string; password: string }) => {
+  const onFinish = async (values: { username: string; password: string }) => {
     setLoading(true);
     setError('');
     try {
       // Логин через сервер
-      const response = await authService.login(values.email, values.password);
+      const response = await authService.login(values.username, values.password);
       if (response.data && response.data.token) {
         localStorage.setItem('token', response.data.token);
         // Получаем пользователя с сервера
@@ -49,14 +49,13 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           autoComplete="off"
         >
           <Form.Item
-            name="email"
-            rules={[{ required: true, message: 'Пожалуйста, введите email' }]}
+            name="username"
+            rules={[{ required: true, message: 'Пожалуйста, введите имя пользователя' }]}
           >
             <Input 
               prefix={<span className="login-icon"><UserOutlined /></span>} 
-              placeholder="Email" 
+              placeholder="Имя пользователя" 
               size="large"
-              type="email"
             />
           </Form.Item>
 

@@ -22,8 +22,8 @@ exports.protect = async (req, res, next) => {
   }
 
   try {
-    // Верификация токена
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Верификация токена с использованием того же секретного ключа по умолчанию
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'JFGDJFGDJGFJTOKENSECRETKEY564373');
 
     // Получаем пользователя по ID из токена
     req.user = await User.findByPk(decoded.id);

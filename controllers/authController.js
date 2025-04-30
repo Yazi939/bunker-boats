@@ -88,7 +88,7 @@ exports.getMe = async (req, res) => {
     const user = await User.findByPk(req.user.id);
     res.status(200).json({
       success: true,
-      data: user
+      user
     });
   } catch (error) {
     res.status(500).json({
@@ -100,11 +100,11 @@ exports.getMe = async (req, res) => {
 
 // Создание и отправка токена в ответе
 const sendTokenResponse = (user, statusCode, res) => {
-  // Создание токена
+  // Создание токена с использованием значений по умолчанию, если переменные окружения не определены
   const token = jwt.sign(
     { id: user.id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRE }
+    process.env.JWT_SECRET || 'JFGDJFGDJGFJTOKENSECRETKEY564373',
+    { expiresIn: process.env.JWT_EXPIRE || '30d' }
   );
 
   res.status(statusCode).json({

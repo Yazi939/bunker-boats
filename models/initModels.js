@@ -7,19 +7,11 @@ const User = sequelize.define('User', {
     username: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
-        validate: {
-            notEmpty: true,
-            len: [3, 50]
-        }
+        unique: true
     },
     password: {
         type: DataTypes.STRING,
-        allowNull: false,
-        validate: {
-            notEmpty: true,
-            len: [6, 100]
-        }
+        allowNull: false
     },
     role: {
         type: DataTypes.ENUM('admin', 'user'),
@@ -192,4 +184,10 @@ FuelTransaction.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
 // Синхронизируем модели с базой данных
 sequelize.sync();
 
-module.exports = { User, sequelize }; 
+module.exports = {
+    User,
+    Vehicle,
+    Shift,
+    FuelTransaction,
+    sequelize
+}; 

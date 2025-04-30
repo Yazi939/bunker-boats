@@ -124,7 +124,7 @@ const App: React.FC = () => {
           const me = await authService.getMe();
           if (me.data && me.data.user) {
             setCurrentUser(me.data.user);
-            setIsLoggedIn(true);
+        setIsLoggedIn(true);
           } else {
             setCurrentUser(null);
             setIsLoggedIn(false);

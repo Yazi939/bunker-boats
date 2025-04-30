@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { connectDB } = require('./config/db');
 const seedUsers = require('./data/seedUsers');
-const { User, sequelize } = require('./models/initModels');
+const { User, Vehicle, Shift, FuelTransaction, sequelize } = require('./models/initModels');
 
 // Проверка существования директории для данных
 const dataDir = path.join(__dirname, 'data');
@@ -23,10 +23,10 @@ const initApp = async () => {
     await connectDB();
     await sequelize.sync();
     console.log('Модели синхронизированы с базой данных');
-    
+
     // Создание начальных пользователей
     await seedUsers();
-    
+
     const app = express();
 
     // Middleware

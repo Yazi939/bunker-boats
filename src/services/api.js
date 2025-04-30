@@ -49,11 +49,15 @@ export const authService = {
       if (!error.response) return { data: { success: false, message: 'Сервер недоступен' } };
       return Promise.reject(error);
     }),
-  login: (email, password) => api.post('/users/login', { email, password })
-    .catch(error => {
-      if (!error.response) return { data: { success: false, message: 'Сервер недоступен' } };
-      return Promise.reject(error);
-    }),
+  login: (username, password) => {
+    console.log('Login payload:', { username, password });
+    return api.post('/users/login', { username, password })
+      .catch(error => {
+        console.log('Login error:', error.response?.data);
+        if (!error.response) return { data: { success: false, message: 'Сервер недоступен' } };
+        return Promise.reject(error);
+      });
+  },
   getMe: () => api.get('/users/me')
     .catch(error => {
       if (!error.response) return { data: { user: null } };

@@ -129,6 +129,17 @@ exports.createTransaction = async (req, res) => {
       req.body.userId = req.user.id;
     }
     
+    // Устанавливаем значение amount, если оно не указано
+    if (req.body.amount === undefined || req.body.amount === null) {
+      // Используем volume как значение по умолчанию, или 0 если volume тоже не указан
+      req.body.amount = req.body.volume || 0;
+    }
+
+    // Обеспечиваем, что volume также установлен
+    if (req.body.volume === undefined || req.body.volume === null) {
+      req.body.volume = req.body.amount || 0;
+    }
+    
     const transaction = await FuelTransaction.create(req.body);
     
     res.status(201).json({
@@ -176,6 +187,17 @@ exports.updateTransaction = async (req, res) => {
     
     // Отмечаем транзакцию как отредактированную
     req.body.edited = true;
+    
+    // Устанавливаем значение amount, если оно не указано
+    if (req.body.amount === undefined || req.body.amount === null) {
+      // Используем volume из запроса или из существующей транзакции
+      req.body.amount = req.body.volume || transaction.volume || 0;
+    }
+
+    // Обеспечиваем, что volume также установлен
+    if (req.body.volume === undefined || req.body.volume === null) {
+      req.body.volume = req.body.amount || transaction.amount || 0;
+    }
     
     await transaction.update(req.body);
     

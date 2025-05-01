@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS FuelTransactions_new (
   source VARCHAR(255),
   destination VARCHAR(255),
   notes TEXT,
-  frozen BOOLEAN,
-  edited BOOLEAN,
+  frozen BOOLEAN DEFAULT 0,
+  edited BOOLEAN DEFAULT 0,
   timestamp BIGINT,
   supplier VARCHAR(255),
   customer VARCHAR(255),
@@ -27,12 +27,22 @@ CREATE TABLE IF NOT EXISTS FuelTransactions_new (
   FOREIGN KEY (vehicleId) REFERENCES Vehicles(id)
 );
 
--- Если существует старая таблица, копируем данные
+-- Получаем список существующих колонок
+.headers on
+.mode column
+PRAGMA table_info(FuelTransactions);
+
+-- Добавляем только основные колонки, без frozen и edited которых может не быть
 BEGIN TRANSACTION;
-  INSERT OR IGNORE INTO FuelTransactions_new 
-  SELECT id, date, type, amount, amount, price, totalCost, fuelType, source, destination, 
-         notes, frozen, edited, timestamp, supplier, customer, vessel, paymentMethod, 
-         key, createdAt, updatedAt, userId, vehicleId
+  INSERT OR IGNORE INTO FuelTransactions_new (
+    id, date, type, amount, volume, price, totalCost, fuelType, source, destination, 
+    notes, timestamp, supplier, customer, vessel, paymentMethod, key, createdAt, 
+    updatedAt, userId, vehicleId
+  )
+  SELECT 
+    id, date, type, amount, amount, price, totalCost, fuelType, source, destination, 
+    notes, timestamp, supplier, customer, vessel, paymentMethod, key, createdAt, 
+    updatedAt, userId, vehicleId
   FROM FuelTransactions;
 
   -- Удаляем старую таблицу

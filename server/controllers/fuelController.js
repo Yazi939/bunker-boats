@@ -43,11 +43,17 @@ exports.getTransactions = async (req, res) => {
     }
     
     // Выполнение запроса с учетом пагинации и сортировки
+    // Используем только существующие в базе данных колонки
     const { count, rows } = await FuelTransaction.findAndCountAll({
       where: whereClause,
       limit,
       offset,
       order,
+      attributes: [
+        'id', 'date', 'type', 'amount', 'price', 'totalCost', 
+        'fuelType', 'source', 'destination', 'notes', 
+        'createdAt', 'updatedAt', 'userId', 'vehicleId'
+      ],
       include: [
         { model: User, as: 'user', attributes: ['id', 'username', 'role'] },
         { model: Vehicle, as: 'vehicle', attributes: ['id', 'name', 'registrationNumber'] }
@@ -59,17 +65,26 @@ exports.getTransactions = async (req, res) => {
       // Преобразуем объект Sequelize в чистый объект
       const plainTransaction = transaction.get({ plain: true });
       
+      // Добавляем недостающие поля программно
+      
       // Гарантируем наличие ключа
       if (!plainTransaction.key) {
         plainTransaction.key = `tx-${plainTransaction.id}-${Date.now()}`;
       }
       
-      // Гарантируем, что volume и amount синхронизированы
+      // Добавляем поле volume из amount
       if (plainTransaction.volume === undefined && plainTransaction.amount !== undefined) {
         plainTransaction.volume = plainTransaction.amount;
       } else if (plainTransaction.amount === undefined && plainTransaction.volume !== undefined) {
         plainTransaction.amount = plainTransaction.volume;
+      } else if (plainTransaction.volume === undefined && plainTransaction.amount === undefined) {
+        plainTransaction.volume = 0;
+        plainTransaction.amount = 0;
       }
+      
+      // Добавляем недостающие поля со значениями по умолчанию
+      if (plainTransaction.frozen === undefined) plainTransaction.frozen = false;
+      if (plainTransaction.edited === undefined) plainTransaction.edited = false;
       
       // Преобразуем timestamp если нужно
       if (!plainTransaction.timestamp && plainTransaction.date) {

@@ -6,6 +6,8 @@ const fs = require('fs');
 const path = require('path');
 const { connectDB } = require('./config/db');
 const seedUsers = require('./data/seedUsers');
+const { sequelize } = require('./models/initModels');
+const { exec } = require('child_process');
 
 // Проверка существования директории для данных
 const dataDir = path.join(__dirname, 'data');
@@ -125,12 +127,82 @@ const initApp = async () => {
       });
     });
 
+    // Check if we should use the database
+    const useDb = process.env.USE_DB !== 'false';
+
+    // Environment variables
     const PORT = process.env.PORT || 5000;
     const HOST = process.env.HOST || '0.0.0.0';
 
-    app.listen(PORT, HOST, () => {
-      console.log(`Сервер запущен на ${HOST}:${PORT} и доступен извне`);
-    });
+    // Function to validate and fix database
+    const validateDatabase = async () => {
+      try {
+        console.log('Checking database integrity...');
+        
+        // Get all models from sequelize
+        const models = Object.values(sequelize.models);
+        
+        // Try to sync models (this will create tables if they don't exist)
+        await sequelize.sync();
+        
+        // Run database fix script for additional checks
+        const fixScriptPath = path.join(__dirname, 'fix_database.sh');
+        
+        if (fs.existsSync(fixScriptPath)) {
+          console.log('Running database fix script...');
+          
+          exec(`bash ${fixScriptPath}`, (error, stdout, stderr) => {
+            if (error) {
+              console.error(`Error running fix script: ${error.message}`);
+              return;
+            }
+            
+            if (stderr) {
+              console.error(`Fix script stderr: ${stderr}`);
+            }
+            
+            console.log(`Fix script output: ${stdout}`);
+          });
+        } else {
+          console.log('Database fix script not found. Skipping additional checks.');
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Database validation failed:', error);
+        return false;
+      }
+    };
+
+    // Start server
+    const startServer = async () => {
+      try {
+        if (useDb) {
+          // Connect to the database
+          await sequelize.authenticate();
+          console.log('Database connection established successfully.');
+          
+          // Validate and fix database
+          const isDbValid = await validateDatabase();
+          
+          if (!isDbValid) {
+            console.warn('Database validation failed, but server will start anyway.');
+          }
+        } else {
+          console.log('Database usage is disabled.');
+        }
+        
+        // Start listening
+        app.listen(PORT, HOST, () => {
+          console.log(`Сервер запущен на ${HOST}:${PORT} и доступен извне`);
+        });
+      } catch (error) {
+        console.error('Unable to start server:', error);
+        process.exit(1);
+      }
+    };
+
+    startServer();
   } catch (error) {
     console.error('Ошибка при инициализации приложения:', error);
     process.exit(1);

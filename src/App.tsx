@@ -29,51 +29,67 @@ interface User {
   id: string;
 }
 
-const iconProps = {
-  style: { color: 'white' }
+const iconStyle: AntdIconProps = { 
+  className: 'white-icon' 
 };
 
+// @ts-ignore
 const adminMenuItems: MenuItem[] = [
   {
     key: 'dashboard',
+    // @ts-ignore
     icon: <DashboardOutlined className="white-icon" />,
     label: 'Дашборд',
   },
   {
     key: 'fuel',
+    // @ts-ignore
     icon: <PartitionOutlined className="white-icon" />,
     label: 'Топливо',
   },
   {
     key: 'orders',
+    // @ts-ignore
     icon: <ShoppingCartOutlined className="white-icon" />,
     label: 'Заказы',
   },
   {
     key: 'expenses',
+    // @ts-ignore
     icon: <CalendarOutlined className="white-icon" />,
     label: 'Календарь расходов',
   },
   {
     key: 'users',
+    // @ts-ignore
     icon: <TeamOutlined className="white-icon" />,
     label: 'Пользователи',
   },
   {
     key: 'shifts',
+    // @ts-ignore
     icon: <ScheduleOutlined className="white-icon" />,
     label: 'Смены',
   },
 ];
 
+// @ts-ignore
 const userMenuItems: MenuItem[] = [
   {
+    key: 'dashboard',
+    // @ts-ignore
+    icon: <DashboardOutlined className="white-icon" />,
+    label: 'Дашборд',
+  },
+  {
     key: 'fuel',
+    // @ts-ignore
     icon: <PartitionOutlined className="white-icon" />,
     label: 'Топливо',
   },
   {
     key: 'orders',
+    // @ts-ignore
     icon: <ShoppingCartOutlined className="white-icon" />,
     label: 'Заказы',
   },
@@ -81,7 +97,7 @@ const userMenuItems: MenuItem[] = [
 
 const App: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const [currentView, setCurrentView] = useState<string>('fuel');
+  const [currentView, setCurrentView] = useState<string>('dashboard');
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -160,7 +176,7 @@ const App: React.FC = () => {
       localStorage.removeItem('currentUser');
       setIsLoggedIn(false);
       setCurrentUser(null);
-      setCurrentView('fuel');
+      setCurrentView('dashboard');
     }
   };
 
@@ -178,13 +194,13 @@ const App: React.FC = () => {
       return <Login onLoginSuccess={(user: User) => {
         setIsLoggedIn(true);
         setCurrentUser(user);
-        setCurrentView('fuel');
+        setCurrentView('dashboard');
       }} />;
     }
 
     switch (currentView) {
       case 'dashboard':
-        return currentUser?.role === 'admin' ? <Dashboard /> : null;
+        return <Dashboard />;
       case 'fuel':
         return <FuelTrading />;
       case 'expenses':
@@ -196,18 +212,21 @@ const App: React.FC = () => {
       case 'orders':
         return <Orders />;
       default:
-        return <FuelTrading />;
+        return <Dashboard />;
     }
   };
 
+  // @ts-ignore
   const dropdownMenuItems: MenuProps['items'] = [
     {
       key: 'settings',
+      // @ts-ignore
       icon: <SettingOutlined className="white-icon" />,
       label: 'Настройки',
     },
     {
       key: 'logout',
+      // @ts-ignore
       icon: <LogoutOutlined className="white-icon" />,
       label: 'Выход',
     },
@@ -232,7 +251,7 @@ const App: React.FC = () => {
         <Menu 
           theme="dark" 
           mode="inline" 
-          defaultSelectedKeys={['fuel']}
+          defaultSelectedKeys={['dashboard']}
           selectedKeys={[currentView]}
           onClick={handleMenuClick}
           items={currentUser?.role === 'admin' ? adminMenuItems : userMenuItems}

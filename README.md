@@ -1,82 +1,149 @@
-# Fuel Manager
+# Fuel Management Application
 
-Приложение для управления топливом, расчета расхода и ведения документации для судов и транспортных средств.
+This application is designed to track fuel expenses, sales, and salary expenses for a fuel management business. The application has been stabilized and optimized for server deployment with a focus on reliability.
 
-## Требования
+## Features
 
-- Node.js 16+ 
-- NPM 8+
-- Windows 7/10/11
+- Dashboard with fuel and salary expenses statistics
+- Fuel transactions management (purchases, sales)
+- Expense tracking
+- User management with role-based access control
+- Automatic database maintenance and health checks
 
-## Установка
+## System Requirements
 
-1. Распакуйте архив в любую папку
-2. Запустите `install.bat` для установки всех зависимостей
+- Node.js 16+ (LTS recommended)
+- SQLite 3
+- PM2 (for production deployment)
+- Cron (for automated maintenance)
 
-## Запуск приложения
+## Project Structure
 
-1. Запустите `start.bat` для запуска всех компонентов приложения
-2. Для остановки используйте `stop.bat` или закройте все окна
+- **server/**: Backend code
+  - **controllers/**: API controllers
+  - **models/**: Database models
+  - **routes/**: API routes
+  - **middleware/**: Express middleware
+  - **config/**: Configuration files
+  - **data/**: Database files
+  - **logs/**: Server logs
+- **src/**: Frontend code
+  - **components/**: React components
+  - **services/**: API services
+  - **hooks/**: React hooks
+  - **utils/**: Utility functions
 
-### Дополнительные скрипты
+## Installation
 
-- `restart.bat` - полная остановка и перезапуск приложения
-- `debug.bat` - запуск приложения с отображением всех логов
-- `fix_ports.bat` - освобождение портов 5000 и 5173 при их блокировке
-- `check_ports.bat` - проверка доступности необходимых портов
+### Development Environment
 
-## Структура проекта
+1. Clone the repository
+2. Install dependencies:
 
-- `/server` - Backend API на Express.js с SQLite базой данных
-- `/src` - Frontend на React.js
-- `/public` - Статические файлы
-- `/assets` - Иконки и медиа файлы
+```bash
+npm install
+```
 
-## Технологии
+3. Start the development server:
 
-- Frontend: React.js, TypeScript, Vite, Ant Design
-- Backend: Express.js, SQLite, Sequelize
-- Desktop: Electron
+```bash
+npm run dev
+```
 
-## Особенности
+### Production Environment
 
-- Расчет топлива для различных типов судов
-- Ведение журнала заправок и расхода
-- Управление транспортными средствами
-- Учет смен и персонала
-- Генерация отчетов
+1. Clone the repository
+2. Install dependencies:
 
-## Устранение неполадок
+```bash
+npm install --production
+```
 
-### Бесконечная загрузка приложения
+3. Build the application:
 
-1. Остановите все процессы с помощью `stop.bat`
-2. Запустите `fix_ports.bat` для принудительного освобождения портов
-3. Запустите `debug.bat` чтобы увидеть ошибки в консолях
-4. Перезапустите с помощью `restart.bat`
+```bash
+npm run build
+```
 
-### Белый экран в приложении
+4. Configure PM2:
 
-Убедитесь, что:
-1. Оба сервера (Vite на порту 5173 и API на порту 5000) запущены
-2. В папке `server/data` создана база данных SQLite
-3. Файл `server/.env` существует с настройками подключения
+```bash
+npm install pm2 -g
+pm2 start ecosystem.config.js
+```
 
-### Ошибка "Cannot connect to server"
+5. Setup maintenance scripts:
 
-1. Остановите все процессы с помощью `stop.bat`
-2. Запустите заново с помощью `start.bat`
-3. Проверьте логи в `electron_log.txt`
+```bash
+cd server
+chmod +x setup_cron_jobs.sh
+./setup_cron_jobs.sh
+```
 
-### Проблемы с правами доступа
+## Database Maintenance
 
-Запустите все bat-файлы от имени администратора.
+The application includes several tools to ensure database integrity:
 
-## Логи и диагностика
+- **fix_database.sh**: Adds missing columns and fixes database structure
+- **check_health.sh**: Monitors application health and database status
+- **setup_cron_jobs.sh**: Sets up automated maintenance
 
-- `electron_log.txt` - логи Electron-приложения
-- Используйте DevTools (Ctrl+Shift+I) для просмотра консоли браузера
+To manually fix database issues:
 
-## Контакты
+```bash
+cd server
+./fix_database.sh
+```
 
-При возникновении проблем обращайтесь в службу поддержки. 
+## Dashboard
+
+The dashboard has been optimized to focus solely on fuel expenses and salary statistics, showing:
+
+- Financial statistics for fuel (purchases, sales, profit)
+- Expense statistics (salary, repairs, other expenses)
+- Visual charts for expense structure and financial balance
+
+## Server Stability
+
+Several improvements have been made to ensure server stability:
+
+1. Robust error handling in controllers
+2. Database transaction support for critical operations
+3. Automatic column synchronization (volume/amount)
+4. Automatic database health checks
+5. Cron jobs for regular maintenance
+6. Comprehensive logging
+
+## Troubleshooting
+
+### Missing Columns Error
+
+If you encounter a "column does not exist" error:
+
+1. Stop the server
+2. Run the database fix script:
+
+```bash
+cd server
+./fix_database.sh
+```
+
+3. Restart the server
+
+### Connection Issues
+
+If the application can't connect to the database:
+
+1. Check the logs in `server/logs/`
+2. Run the health check:
+
+```bash
+cd server
+./check_health.sh
+```
+
+3. Ensure the database file exists in `server/data/`
+
+## License
+
+MIT 

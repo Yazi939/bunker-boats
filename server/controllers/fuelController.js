@@ -76,17 +76,16 @@ exports.getTransactions = async (req, res) => {
       });
     }
     
-    // Execute query with pagination, sorting, and includes
+    // Выбираем только те поля, которые точно есть в базе данных
     const { count, rows } = await FuelTransaction.findAndCountAll({
       where: whereClause,
       limit,
       offset,
       order,
       attributes: [
-        'id', 'date', 'type', 'amount', 'volume', 'price', 'totalCost', 
-        'fuelType', 'source', 'destination', 'notes', 'timestamp', 
-        'supplier', 'customer', 'vessel', 'paymentMethod', 'key', 
-        'createdAt', 'updatedAt', 'userId', 'vehicleId'
+        'id', 'date', 'type', 'amount', 'volume', 'price', 
+        'totalCost', 'fuelType', 'source', 'destination', 'notes', 
+        'timestamp', 'createdAt', 'updatedAt', 'userId', 'vehicleId'
       ],
       include: [
         { model: User, as: 'user', attributes: ['id', 'username', 'role'] },
@@ -126,10 +125,9 @@ exports.getTransaction = async (req, res) => {
   try {
     const transaction = await FuelTransaction.findByPk(req.params.id, {
       attributes: [
-        'id', 'date', 'type', 'amount', 'volume', 'price', 'totalCost', 
-        'fuelType', 'source', 'destination', 'notes', 'timestamp', 
-        'supplier', 'customer', 'vessel', 'paymentMethod', 'key', 
-        'createdAt', 'updatedAt', 'userId', 'vehicleId'
+        'id', 'date', 'type', 'amount', 'volume', 'price', 
+        'totalCost', 'fuelType', 'source', 'destination', 'notes', 
+        'timestamp', 'createdAt', 'updatedAt', 'userId', 'vehicleId'
       ],
       include: [
         { model: User, as: 'user', attributes: ['id', 'username', 'role'] },
@@ -312,10 +310,9 @@ exports.updateTransaction = async (req, res) => {
     // Fetch updated transaction with associations
     const updatedTransaction = await FuelTransaction.findByPk(req.params.id, {
       attributes: [
-        'id', 'date', 'type', 'amount', 'volume', 'price', 'totalCost', 
-        'fuelType', 'source', 'destination', 'notes', 'timestamp', 
-        'supplier', 'customer', 'vessel', 'paymentMethod', 'key', 
-        'createdAt', 'updatedAt', 'userId', 'vehicleId'
+        'id', 'date', 'type', 'amount', 'volume', 'price', 
+        'totalCost', 'fuelType', 'source', 'destination', 'notes', 
+        'timestamp', 'createdAt', 'updatedAt', 'userId', 'vehicleId'
       ],
       include: [
         { model: User, as: 'user', attributes: ['id', 'username', 'role'] },

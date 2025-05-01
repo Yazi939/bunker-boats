@@ -41,60 +41,68 @@ const sanitizeTransaction = (transaction) => {
 // @access  Private
 exports.getTransactions = async (req, res) => {
   try {
-    // Create base query object
-    let whereClause = {};
-    
-    // Apply filters if specified
-    if (req.query.fuelType) {
-      whereClause.fuelType = req.query.fuelType;
-    }
-    
-    if (req.query.type) {
-      whereClause.type = req.query.type;
-    }
-    
-    if (req.query.startDate && req.query.endDate) {
-      whereClause.date = {
-        [Op.between]: [req.query.startDate, req.query.endDate]
-      };
-    }
-    
-    // Pagination
+    // Create base query parameters
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 25;
     const offset = (page - 1) * limit;
     
-    // Sorting options
-    let order = [['date', 'DESC']]; // default by date, newest first
-    if (req.query.sort) {
-      const sortParams = req.query.sort.split(',');
-      order = sortParams.map(param => {
-        if (param.startsWith('-')) {
-          return [param.substring(1), 'DESC'];
-        }
-        return [param, 'ASC'];
-      });
-    }
+    // Use raw SQL query to avoid ORM issues with column aliases
+    const query = `
+      SELECT 
+        f.id, f.date, f.type, f.amount, f.volume, f.price, 
+        f.totalCost, f.fuelType, f.source, f.destination, f.notes, 
+        f.timestamp, f.createdAt, f.updatedAt, f.userId,
+        u.id as 'user.id', u.username as 'user.username', u.role as 'user.role'
+      FROM FuelTransactions f
+      LEFT JOIN Users u ON f.userId = u.id
+      ORDER BY f.date DESC
+      LIMIT ? OFFSET ?
+    `;
     
-    // Only select columns that exist in the database
-    const { count, rows } = await FuelTransaction.findAndCountAll({
-      where: whereClause,
-      limit,
-      offset,
-      order,
-      attributes: [
-        'id', 'date', 'type', 'amount', 'volume', 'price', 
-        'totalCost', 'fuelType', 'source', 'destination', 'notes', 
-        'timestamp', 'createdAt', 'updatedAt', 'userId', 'vehicleId',
-        'frozen', 'edited', 'supplier', 'customer', 'vessel', 'paymentMethod', 'key'
-      ],
-      include: [
-        { model: User, as: 'user', attributes: ['id', 'username', 'role'] }
-      ]
+    // Count query for pagination
+    const countQuery = `SELECT COUNT(*) as count FROM FuelTransactions`;
+    
+    // Execute queries
+    const [rows] = await sequelize.query(query, { 
+      replacements: [limit, offset],
+      type: sequelize.QueryTypes.SELECT
     });
     
-    // Sanitize transactions
-    const transactions = rows.map(transaction => sanitizeTransaction(transaction));
+    const [countResult] = await sequelize.query(countQuery, {
+      type: sequelize.QueryTypes.SELECT
+    });
+    
+    // Calculate count
+    const count = countResult.count;
+    
+    // Process results
+    const transactions = rows.map(row => {
+      // Convert to object structure similar to what the ORM would return
+      const transaction = {
+        id: row.id,
+        date: row.date,
+        type: row.type,
+        amount: row.amount,
+        volume: row.volume,
+        price: row.price,
+        totalCost: row.totalCost,
+        fuelType: row.fuelType,
+        source: row.source,
+        destination: row.destination,
+        notes: row.notes,
+        timestamp: row.timestamp,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        userId: row.userId,
+        user: {
+          id: row['user.id'],
+          username: row['user.username'],
+          role: row['user.role']
+        }
+      };
+      
+      return sanitizeTransaction(transaction);
+    });
     
     // Return data
     return res.status(200).json({
@@ -123,24 +131,55 @@ exports.getTransactions = async (req, res) => {
 // @access  Private
 exports.getTransaction = async (req, res) => {
   try {
-    const transaction = await FuelTransaction.findByPk(req.params.id, {
-      attributes: [
-        'id', 'date', 'type', 'amount', 'volume', 'price', 
-        'totalCost', 'fuelType', 'source', 'destination', 'notes', 
-        'timestamp', 'createdAt', 'updatedAt', 'userId', 'vehicleId',
-        'frozen', 'edited', 'supplier', 'customer', 'vessel', 'paymentMethod', 'key'
-      ],
-      include: [
-        { model: User, as: 'user', attributes: ['id', 'username', 'role'] }
-      ]
+    // Use raw SQL query to avoid ORM issues with column aliases
+    const query = `
+      SELECT 
+        f.id, f.date, f.type, f.amount, f.volume, f.price, 
+        f.totalCost, f.fuelType, f.source, f.destination, f.notes, 
+        f.timestamp, f.createdAt, f.updatedAt, f.userId,
+        u.id as 'user.id', u.username as 'user.username', u.role as 'user.role'
+      FROM FuelTransactions f
+      LEFT JOIN Users u ON f.userId = u.id
+      WHERE f.id = ?
+    `;
+    
+    // Execute query
+    const [rows] = await sequelize.query(query, { 
+      replacements: [req.params.id],
+      type: sequelize.QueryTypes.SELECT
     });
     
-    if (!transaction) {
+    if (rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Transaction not found'
       });
     }
+    
+    // Process result
+    const row = rows[0];
+    const transaction = {
+      id: row.id,
+      date: row.date,
+      type: row.type,
+      amount: row.amount,
+      volume: row.volume,
+      price: row.price,
+      totalCost: row.totalCost,
+      fuelType: row.fuelType,
+      source: row.source,
+      destination: row.destination,
+      notes: row.notes,
+      timestamp: row.timestamp,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      userId: row.userId,
+      user: {
+        id: row['user.id'],
+        username: row['user.username'],
+        role: row['user.role']
+      }
+    };
     
     // Sanitize transaction
     const sanitizedTransaction = sanitizeTransaction(transaction);

@@ -93,6 +93,7 @@ const initApp = async () => {
     // Удаляем импорт маршрутов связанных с транспортными средствами
     // const vehicleRoutes = require('./routes/vehicleRoutes');
     const shiftRoutes = require('./routes/shiftRoutes');
+    const debugRoutes = require('./routes/debug_routes');
 
     // Использование маршрутов
     app.use('/api/users', userRoutes);
@@ -101,6 +102,7 @@ const initApp = async () => {
     // Удаляем использование маршрутов для транспортных средств
     // app.use('/api/vehicles', vehicleRoutes);
     app.use('/api/shifts', shiftRoutes);
+    app.use('/api/debug', debugRoutes);
 
     // Базовый маршрут
     app.get('/', (req, res) => {

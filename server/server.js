@@ -16,6 +16,11 @@ if (!fs.existsSync(dataDir)) {
 // Загрузка переменных окружения
 dotenv.config();
 
+// Проверка наличия JWT_SECRET
+if (!process.env.JWT_SECRET) {
+  console.warn('ВНИМАНИЕ: JWT_SECRET не установлен в переменных окружения. Используется значение по умолчанию.');
+}
+
 // Подключение к базе данных и инициализация моделей
 const initApp = async () => {
   try {

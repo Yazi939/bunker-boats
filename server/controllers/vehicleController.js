@@ -5,7 +5,7 @@ const { Vehicle } = require('../models/initModels');
 // @access  Private
 exports.getVehicles = async (req, res) => {
   try {
-    const vehicles = await Vehicle.find();
+    const vehicles = await Vehicle.findAll();
     
     res.status(200).json({
       success: true,
@@ -25,7 +25,7 @@ exports.getVehicles = async (req, res) => {
 // @access  Private
 exports.getVehicle = async (req, res) => {
   try {
-    const vehicle = await Vehicle.findOne({ id: req.params.id });
+    const vehicle = await Vehicle.findByPk(req.params.id);
     
     if (!vehicle) {
       return res.status(404).json({
@@ -51,12 +51,15 @@ exports.getVehicle = async (req, res) => {
 // @access  Private/Admin
 exports.createVehicle = async (req, res) => {
   try {
-    // Проверяем, существует ли ТС с таким ID
-    const vehicleExists = await Vehicle.findOne({ id: req.body.id });
+    // Проверяем, существует ли ТС с таким registrationNumber
+    const vehicleExists = await Vehicle.findOne({ 
+      where: { registrationNumber: req.body.registrationNumber } 
+    });
+    
     if (vehicleExists) {
       return res.status(400).json({
         success: false,
-        error: 'Транспортное средство с таким ID уже существует'
+        error: 'Транспортное средство с таким регистрационным номером уже существует'
       });
     }
     
@@ -79,7 +82,7 @@ exports.createVehicle = async (req, res) => {
 // @access  Private/Admin
 exports.updateVehicle = async (req, res) => {
   try {
-    let vehicle = await Vehicle.findOne({ id: req.params.id });
+    let vehicle = await Vehicle.findByPk(req.params.id);
     
     if (!vehicle) {
       return res.status(404).json({
@@ -88,15 +91,14 @@ exports.updateVehicle = async (req, res) => {
       });
     }
     
-    vehicle = await Vehicle.findOneAndUpdate(
-      { id: req.params.id },
-      req.body,
-      { new: true, runValidators: true }
-    );
+    await vehicle.update(req.body);
+    
+    // Получаем обновленную запись
+    const updatedVehicle = await Vehicle.findByPk(req.params.id);
     
     res.status(200).json({
       success: true,
-      data: vehicle
+      data: updatedVehicle
     });
   } catch (error) {
     res.status(400).json({
@@ -111,7 +113,7 @@ exports.updateVehicle = async (req, res) => {
 // @access  Private/Admin
 exports.deleteVehicle = async (req, res) => {
   try {
-    const vehicle = await Vehicle.findOne({ id: req.params.id });
+    const vehicle = await Vehicle.findByPk(req.params.id);
     
     if (!vehicle) {
       return res.status(404).json({
@@ -120,7 +122,7 @@ exports.deleteVehicle = async (req, res) => {
       });
     }
     
-    await vehicle.deleteOne();
+    await vehicle.destroy();
     
     res.status(200).json({
       success: true,

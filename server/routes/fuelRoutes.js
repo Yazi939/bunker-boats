@@ -29,8 +29,20 @@ router.get('/debug', async (req, res) => {
 // Добавляем маршрут для тестирования POST запросов
 router.post('/debug', createTransaction);
 
-// Добавляем прямой маршрут для создания транзакций
-router.post('/direct', createTransactionDirect);
+// Проверяем наличие функции перед использованием
+if (typeof createTransactionDirect === 'function') {
+  // Добавляем прямой маршрут для создания транзакций
+  router.post('/direct', createTransactionDirect);
+} else {
+  console.error('createTransactionDirect is not defined or not a function');
+  // Создаем заглушку на случай, если функция недоступна
+  router.post('/direct', (req, res) => {
+    res.status(501).json({
+      success: false,
+      error: 'Function not implemented'
+    });
+  });
+}
 
 router
   .route('/')

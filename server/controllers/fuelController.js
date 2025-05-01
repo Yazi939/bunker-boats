@@ -76,7 +76,7 @@ exports.getTransactions = async (req, res) => {
       });
     }
     
-    // Выбираем только те поля, которые точно есть в базе данных
+    // Only select columns that exist in the database
     const { count, rows } = await FuelTransaction.findAndCountAll({
       where: whereClause,
       limit,

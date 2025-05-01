@@ -11,118 +11,139 @@ NC='\033[0m' # No Color
 
 echo -e "${YELLOW}Starting database fix script...${NC}"
 
-# Database file path
+# Path to the database file
 DB_FILE="./data/database.sqlite"
-BACKUP_DIR="./backup"
-BACKUP_FILE="${BACKUP_DIR}/database_backup_$(date +%Y%m%d_%H%M%S).sqlite"
 
-# Create backup directory if it doesn't exist
-mkdir -p "$BACKUP_DIR"
+# Create a backup directory if it doesn't exist
+mkdir -p ./backup
 
-# Check if database file exists
-if [ ! -f "$DB_FILE" ]; then
-    echo -e "${RED}Error: Database file $DB_FILE not found!${NC}"
-    exit 1
-fi
+# Get current date and time for backup filename
+BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_FILE="./backup/database_backup_${BACKUP_DATE}.sqlite"
 
-# Create backup
-echo -e "Creating database backup to $BACKUP_FILE..."
-cp "$DB_FILE" "$BACKUP_FILE"
-
-if [ $? -eq 0 ]; then
+# Create a backup of the database
+echo -e "Creating database backup to ${BACKUP_FILE}..."
+if cp "${DB_FILE}" "${BACKUP_FILE}"; then
     echo -e "${GREEN}Backup created successfully!${NC}"
 else
     echo -e "${RED}Failed to create backup. Aborting.${NC}"
-  exit 1
+    exit 1
 fi
 
-# Check the tables in the database
+# Check the database tables
 echo -e "Checking database tables..."
-TABLES=$(sqlite3 "$DB_FILE" ".tables")
-echo -e "Found tables: $TABLES"
+TABLES=$(sqlite3 "${DB_FILE}" ".tables")
+echo -e "Found tables: ${TABLES}"
 
-# Check if FuelTransactions table exists
-if echo "$TABLES" | grep -q "FuelTransactions"; then
-    TABLE_NAME="FuelTransactions"
-elif echo "$TABLES" | grep -q "Fuel"; then
-    TABLE_NAME="Fuel"
+# Check and modify FuelTransactions table
+echo -e "Checking FuelTransactions table schema..."
+TABLE_SCHEMA=$(sqlite3 "${DB_FILE}" ".schema FuelTransactions")
+echo "${TABLE_SCHEMA}"
+
+# Check if the volume column exists
+if [[ $TABLE_SCHEMA == *"volume FLOAT"* ]]; then
+    echo -e "${GREEN}Volume column already exists in FuelTransactions table.${NC}"
 else
-    echo -e "${RED}Warning: Neither FuelTransactions nor Fuel table found!${NC}"
-    # Try to find any table with 'fuel' in the name (case insensitive)
-    FUEL_TABLE=$(echo "$TABLES" | grep -i "fuel")
-    if [ -n "$FUEL_TABLE" ]; then
-        TABLE_NAME=$FUEL_TABLE
-        echo -e "${YELLOW}Using table: $TABLE_NAME${NC}"
-    else
-        echo -e "${RED}No fuel-related table found. Aborting.${NC}"
-        exit 1
-    fi
+    echo -e "${YELLOW}Adding volume column to FuelTransactions table...${NC}"
+    sqlite3 "${DB_FILE}" "ALTER TABLE FuelTransactions ADD COLUMN volume FLOAT;"
+    echo -e "${GREEN}Volume column added successfully!${NC}"
 fi
 
-# Check table schema
-echo -e "Checking $TABLE_NAME table schema..."
-SCHEMA=$(sqlite3 "$DB_FILE" ".schema $TABLE_NAME")
-echo "$SCHEMA"
-
-# Check if volume column exists
-if echo "$SCHEMA" | grep -q "volume"; then
-    echo -e "${GREEN}Volume column already exists in $TABLE_NAME table.${NC}"
+# Check if totalCost column exists
+if [[ $TABLE_SCHEMA == *"totalCost"* ]]; then
+    echo -e "${GREEN}Column totalCost exists in FuelTransactions table.${NC}"
 else
-    echo -e "${YELLOW}Adding volume column to $TABLE_NAME table...${NC}"
-    
-    # Add volume column
-    sqlite3 "$DB_FILE" "ALTER TABLE $TABLE_NAME ADD COLUMN volume REAL DEFAULT 0;"
-    
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Successfully added volume column!${NC}"
-        
-        # Update volume column from amount if amount exists
-        if echo "$SCHEMA" | grep -q "amount"; then
-            echo -e "Copying values from amount column to volume column..."
-            sqlite3 "$DB_FILE" "UPDATE $TABLE_NAME SET volume = amount WHERE amount IS NOT NULL;"
-            
-if [ $? -eq 0 ]; then
-                echo -e "${GREEN}Successfully copied amount values to volume column!${NC}"
-            else
-                echo -e "${RED}Failed to copy values from amount to volume.${NC}"
-            fi
-else
-            echo -e "${YELLOW}Warning: amount column not found. volume column added with default values.${NC}"
-        fi
-    else
-        echo -e "${RED}Failed to add volume column!${NC}"
-    fi
+    echo -e "${YELLOW}Adding totalCost column to FuelTransactions table...${NC}"
+    sqlite3 "${DB_FILE}" "ALTER TABLE FuelTransactions ADD COLUMN totalCost FLOAT DEFAULT 0;"
+    echo -e "${GREEN}totalCost column added successfully!${NC}"
 fi
 
-# Check other essential columns
-ESSENTIAL_COLUMNS=("totalCost" "timestamp" "fuelType")
-for column in "${ESSENTIAL_COLUMNS[@]}"; do
-    if echo "$SCHEMA" | grep -qi "$column"; then
-        echo -e "${GREEN}Column $column exists in $TABLE_NAME table.${NC}"
-    else
-        echo -e "${YELLOW}Adding $column column to $TABLE_NAME table...${NC}"
-        
-        # Add column with appropriate type
-        if [ "$column" == "totalCost" ]; then
-            sqlite3 "$DB_FILE" "ALTER TABLE $TABLE_NAME ADD COLUMN totalCost REAL DEFAULT 0;"
-        elif [ "$column" == "timestamp" ]; then
-            sqlite3 "$DB_FILE" "ALTER TABLE $TABLE_NAME ADD COLUMN timestamp BIGINT;"
-            # Update timestamp from date if date exists
-            if echo "$SCHEMA" | grep -q "date"; then
-                echo -e "Generating timestamp values from date column..."
-                sqlite3 "$DB_FILE" "UPDATE $TABLE_NAME SET timestamp = strftime('%s', date) * 1000 WHERE date IS NOT NULL;"
-            fi
-        elif [ "$column" == "fuelType" ]; then
-            sqlite3 "$DB_FILE" "ALTER TABLE $TABLE_NAME ADD COLUMN fuelType TEXT DEFAULT 'diesel';"
-        fi
-        
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}Successfully added $column column!${NC}"
-        else
-            echo -e "${RED}Failed to add $column column!${NC}"
-        fi
-    fi
-done
+# Check if timestamp column exists
+if [[ $TABLE_SCHEMA == *"timestamp"* ]]; then
+    echo -e "${GREEN}Column timestamp exists in FuelTransactions table.${NC}"
+else
+    echo -e "${YELLOW}Adding timestamp column to FuelTransactions table...${NC}"
+    sqlite3 "${DB_FILE}" "ALTER TABLE FuelTransactions ADD COLUMN timestamp INTEGER;"
+    
+    # Generate timestamp values based on the date column
+    echo -e "Generating timestamp values from date column..."
+    sqlite3 "${DB_FILE}" "UPDATE FuelTransactions SET timestamp = strftime('%s', date) * 1000 WHERE timestamp IS NULL;"
+    echo -e "${GREEN}Successfully added timestamp column!${NC}"
+fi
+
+# Check if fuelType column exists
+if [[ $TABLE_SCHEMA == *"fuelType"* ]]; then
+    echo -e "${GREEN}Column fuelType exists in FuelTransactions table.${NC}"
+else
+    echo -e "${YELLOW}Adding fuelType column to FuelTransactions table...${NC}"
+    sqlite3 "${DB_FILE}" "ALTER TABLE FuelTransactions ADD COLUMN fuelType TEXT DEFAULT 'diesel';"
+    echo -e "${GREEN}fuelType column added successfully!${NC}"
+fi
+
+# Check and add supplier column
+if [[ $TABLE_SCHEMA == *"supplier"* ]]; then
+    echo -e "${GREEN}Column supplier exists in FuelTransactions table.${NC}"
+else
+    echo -e "${YELLOW}Adding supplier column to FuelTransactions table...${NC}"
+    sqlite3 "${DB_FILE}" "ALTER TABLE FuelTransactions ADD COLUMN supplier TEXT;"
+    echo -e "${GREEN}supplier column added successfully!${NC}"
+fi
+
+# Check and add customer column
+if [[ $TABLE_SCHEMA == *"customer"* ]]; then
+    echo -e "${GREEN}Column customer exists in FuelTransactions table.${NC}"
+else
+    echo -e "${YELLOW}Adding customer column to FuelTransactions table...${NC}"
+    sqlite3 "${DB_FILE}" "ALTER TABLE FuelTransactions ADD COLUMN customer TEXT;"
+    echo -e "${GREEN}customer column added successfully!${NC}"
+fi
+
+# Check and add vessel column
+if [[ $TABLE_SCHEMA == *"vessel"* ]]; then
+    echo -e "${GREEN}Column vessel exists in FuelTransactions table.${NC}"
+else
+    echo -e "${YELLOW}Adding vessel column to FuelTransactions table...${NC}"
+    sqlite3 "${DB_FILE}" "ALTER TABLE FuelTransactions ADD COLUMN vessel TEXT;"
+    echo -e "${GREEN}vessel column added successfully!${NC}"
+fi
+
+# Check and add paymentMethod column
+if [[ $TABLE_SCHEMA == *"paymentMethod"* ]]; then
+    echo -e "${GREEN}Column paymentMethod exists in FuelTransactions table.${NC}"
+else
+    echo -e "${YELLOW}Adding paymentMethod column to FuelTransactions table...${NC}"
+    sqlite3 "${DB_FILE}" "ALTER TABLE FuelTransactions ADD COLUMN paymentMethod TEXT;"
+    echo -e "${GREEN}paymentMethod column added successfully!${NC}"
+fi
+
+# Check and add key column
+if [[ $TABLE_SCHEMA == *"key"* ]]; then
+    echo -e "${GREEN}Column key exists in FuelTransactions table.${NC}"
+else
+    echo -e "${YELLOW}Adding key column to FuelTransactions table...${NC}"
+    sqlite3 "${DB_FILE}" "ALTER TABLE FuelTransactions ADD COLUMN key TEXT;"
+    # Generate unique keys for existing transactions
+    sqlite3 "${DB_FILE}" "UPDATE FuelTransactions SET key = 'tx-' || id || '-' || (CASE WHEN timestamp IS NULL THEN strftime('%s', 'now') * 1000 ELSE timestamp END) WHERE key IS NULL;"
+    echo -e "${GREEN}key column added successfully!${NC}"
+fi
+
+# Check and add frozen column
+if [[ $TABLE_SCHEMA == *"frozen"* ]]; then
+    echo -e "${GREEN}Column frozen exists in FuelTransactions table.${NC}"
+else
+    echo -e "${YELLOW}Adding frozen column to FuelTransactions table...${NC}"
+    sqlite3 "${DB_FILE}" "ALTER TABLE FuelTransactions ADD COLUMN frozen BOOLEAN DEFAULT 0;"
+    echo -e "${GREEN}frozen column added successfully!${NC}"
+fi
+
+# Check and add edited column
+if [[ $TABLE_SCHEMA == *"edited"* ]]; then
+    echo -e "${GREEN}Column edited exists in FuelTransactions table.${NC}"
+else
+    echo -e "${YELLOW}Adding edited column to FuelTransactions table...${NC}"
+    sqlite3 "${DB_FILE}" "ALTER TABLE FuelTransactions ADD COLUMN edited BOOLEAN DEFAULT 0;"
+    echo -e "${GREEN}edited column added successfully!${NC}"
+fi
 
 echo -e "${GREEN}Database fix completed!${NC}"
 echo -e "${YELLOW}Important: Restart the server to apply the changes.${NC}"

@@ -85,7 +85,8 @@ exports.getTransactions = async (req, res) => {
       attributes: [
         'id', 'date', 'type', 'amount', 'volume', 'price', 
         'totalCost', 'fuelType', 'source', 'destination', 'notes', 
-        'timestamp', 'createdAt', 'updatedAt', 'userId'
+        'timestamp', 'createdAt', 'updatedAt', 'userId', 'vehicleId',
+        'frozen', 'edited', 'supplier', 'customer', 'vessel', 'paymentMethod', 'key'
       ],
       include: [
         { model: User, as: 'user', attributes: ['id', 'username', 'role'] }
@@ -126,7 +127,8 @@ exports.getTransaction = async (req, res) => {
       attributes: [
         'id', 'date', 'type', 'amount', 'volume', 'price', 
         'totalCost', 'fuelType', 'source', 'destination', 'notes', 
-        'timestamp', 'createdAt', 'updatedAt', 'userId'
+        'timestamp', 'createdAt', 'updatedAt', 'userId', 'vehicleId',
+        'frozen', 'edited', 'supplier', 'customer', 'vessel', 'paymentMethod', 'key'
       ],
       include: [
         { model: User, as: 'user', attributes: ['id', 'username', 'role'] }
@@ -310,7 +312,8 @@ exports.updateTransaction = async (req, res) => {
       attributes: [
         'id', 'date', 'type', 'amount', 'volume', 'price', 
         'totalCost', 'fuelType', 'source', 'destination', 'notes', 
-        'timestamp', 'createdAt', 'updatedAt', 'userId'
+        'timestamp', 'createdAt', 'updatedAt', 'userId', 'vehicleId',
+        'frozen', 'edited', 'supplier', 'customer', 'vessel', 'paymentMethod', 'key'
       ],
       include: [
         { model: User, as: 'user', attributes: ['id', 'username', 'role'] }

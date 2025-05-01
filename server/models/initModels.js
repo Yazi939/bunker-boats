@@ -151,6 +151,14 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
             min: { args: [0], msg: 'Количество топлива должно быть положительным числом' }
         }
     },
+    volume: {
+        type: DataTypes.FLOAT,
+        allowNull: true,
+        defaultValue: 0,
+        validate: {
+            min: { args: [0], msg: 'Объем должен быть положительным числом' }
+        }
+    },
     price: {
         type: DataTypes.FLOAT,
         allowNull: true,
@@ -182,14 +190,6 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
     notes: {
         type: DataTypes.TEXT,
         allowNull: true
-    },
-    volume: {
-        type: DataTypes.FLOAT,
-        allowNull: true,
-        defaultValue: 0,
-        validate: {
-            min: { args: [0], msg: 'Объем должен быть положительным числом' }
-        }
     },
     frozen: {
         type: DataTypes.BOOLEAN,

@@ -82,6 +82,12 @@ exports.getTransactions = async (req, res) => {
       limit,
       offset,
       order,
+      attributes: [
+        'id', 'date', 'type', 'amount', 'volume', 'price', 'totalCost', 
+        'fuelType', 'source', 'destination', 'notes', 'timestamp', 
+        'supplier', 'customer', 'vessel', 'paymentMethod', 'key', 
+        'createdAt', 'updatedAt', 'userId', 'vehicleId'
+      ],
       include: [
         { model: User, as: 'user', attributes: ['id', 'username', 'role'] },
         { model: Vehicle, as: 'vehicle', attributes: ['id', 'name', 'registrationNumber'] }
@@ -119,6 +125,12 @@ exports.getTransactions = async (req, res) => {
 exports.getTransaction = async (req, res) => {
   try {
     const transaction = await FuelTransaction.findByPk(req.params.id, {
+      attributes: [
+        'id', 'date', 'type', 'amount', 'volume', 'price', 'totalCost', 
+        'fuelType', 'source', 'destination', 'notes', 'timestamp', 
+        'supplier', 'customer', 'vessel', 'paymentMethod', 'key', 
+        'createdAt', 'updatedAt', 'userId', 'vehicleId'
+      ],
       include: [
         { model: User, as: 'user', attributes: ['id', 'username', 'role'] },
         { model: Vehicle, as: 'vehicle', attributes: ['id', 'name', 'registrationNumber'] }
@@ -271,15 +283,6 @@ exports.updateTransaction = async (req, res) => {
       });
     }
     
-    // Check if transaction is frozen (admin can bypass)
-    if (existingTransaction.frozen && (!req.user || req.user.role !== 'admin')) {
-      await transaction.rollback();
-      return res.status(403).json({
-        success: false,
-        error: 'Cannot modify a frozen transaction'
-      });
-    }
-    
     // Check ownership or admin role
     if (existingTransaction.userId && 
         existingTransaction.userId !== req.user?.id && 
@@ -290,9 +293,6 @@ exports.updateTransaction = async (req, res) => {
         error: 'You do not have permission to update this transaction'
       });
     }
-    
-    // Mark as edited
-    req.body.edited = true;
     
     // Synchronize amount and volume
     if (req.body.amount === undefined && req.body.volume !== undefined) {
@@ -311,6 +311,12 @@ exports.updateTransaction = async (req, res) => {
     
     // Fetch updated transaction with associations
     const updatedTransaction = await FuelTransaction.findByPk(req.params.id, {
+      attributes: [
+        'id', 'date', 'type', 'amount', 'volume', 'price', 'totalCost', 
+        'fuelType', 'source', 'destination', 'notes', 'timestamp', 
+        'supplier', 'customer', 'vessel', 'paymentMethod', 'key', 
+        'createdAt', 'updatedAt', 'userId', 'vehicleId'
+      ],
       include: [
         { model: User, as: 'user', attributes: ['id', 'username', 'role'] },
         { model: Vehicle, as: 'vehicle', attributes: ['id', 'name', 'registrationNumber'] }
@@ -355,15 +361,6 @@ exports.deleteTransaction = async (req, res) => {
       return res.status(404).json({
         success: false,
         error: 'Transaction not found'
-      });
-    }
-    
-    // Check if transaction is frozen (admin can bypass)
-    if (existingTransaction.frozen && (!req.user || req.user.role !== 'admin')) {
-      await transaction.rollback();
-      return res.status(403).json({
-        success: false,
-        error: 'Cannot delete a frozen transaction'
       });
     }
     

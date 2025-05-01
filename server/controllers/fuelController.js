@@ -197,6 +197,63 @@ exports.createTransaction = async (req, res) => {
   }
 };
 
+// @desc    Create transaction directly (no auth required)
+// @route   POST /api/fuel/direct
+// @access  Public
+exports.createTransactionDirect = async (req, res) => {
+  try {
+    // Log direct transaction attempt for monitoring
+    console.log('Direct transaction creation attempt:', {
+      ip: req.ip,
+      body: req.body,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Ensure amount and volume are synchronized
+    if (req.body.amount === undefined && req.body.volume !== undefined) {
+      req.body.amount = Number(req.body.volume) || 0;
+    } else if (req.body.volume === undefined && req.body.amount !== undefined) {
+      req.body.volume = Number(req.body.amount) || 0;
+    } else if (req.body.volume === undefined && req.body.amount === undefined) {
+      req.body.volume = 0;
+      req.body.amount = 0;
+    }
+    
+    // Ensure date and timestamp
+    if (!req.body.date) {
+      req.body.date = new Date();
+    }
+    
+    if (!req.body.timestamp) {
+      req.body.timestamp = new Date(req.body.date).getTime();
+    }
+    
+    // Default user ID if not provided (for automatic imports)
+    if (!req.body.userId) {
+      const adminUser = await User.findOne({ where: { role: 'admin' } });
+      req.body.userId = adminUser ? adminUser.id : null;
+    }
+    
+    // Create transaction in DB
+    const transaction = await FuelTransaction.create(req.body);
+    
+    // Sanitize result
+    const sanitizedTransaction = sanitizeTransaction(transaction);
+    
+    res.status(201).json({
+      success: true,
+      data: sanitizedTransaction
+    });
+  } catch (error) {
+    console.error('Error in createTransactionDirect:', error);
+    res.status(400).json({
+      success: false,
+      error: "Failed to create direct transaction",
+      details: error.message
+    });
+  }
+};
+
 // @desc    Update transaction
 // @route   PUT /api/fuel/:id
 // @access  Private

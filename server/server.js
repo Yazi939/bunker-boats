@@ -86,12 +86,21 @@ const initApp = async () => {
       next(err);
     });
 
-    // Маршруты API
-    app.use('/api/users', require('./routes/userRoutes'));
-    app.use('/api/vehicles', require('./routes/vehicleRoutes'));
-    app.use('/api/shifts', require('./routes/shiftRoutes'));
-    app.use('/api/fuel', require('./routes/fuelRoutes'));
-    app.use('/api/health', require('./routes/healthRoutes'));
+    // Импорт маршрутов
+    const userRoutes = require('./routes/userRoutes');
+    const fuelRoutes = require('./routes/fuelRoutes');
+    const healthRoutes = require('./routes/healthRoutes');
+    // Удаляем импорт маршрутов связанных с транспортными средствами
+    // const vehicleRoutes = require('./routes/vehicleRoutes');
+    const shiftRoutes = require('./routes/shiftRoutes');
+
+    // Использование маршрутов
+    app.use('/api/users', userRoutes);
+    app.use('/api/fuel', fuelRoutes);
+    app.use('/api/health', healthRoutes);
+    // Удаляем использование маршрутов для транспортных средств
+    // app.use('/api/vehicles', vehicleRoutes);
+    app.use('/api/shifts', shiftRoutes);
 
     // Базовый маршрут
     app.get('/', (req, res) => {

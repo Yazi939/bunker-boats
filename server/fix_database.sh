@@ -33,7 +33,7 @@ if [ $? -eq 0 ]; then
     echo -e "${GREEN}Backup created successfully!${NC}"
 else
     echo -e "${RED}Failed to create backup. Aborting.${NC}"
-    exit 1
+  exit 1
 fi
 
 # Check the tables in the database
@@ -81,12 +81,12 @@ else
             echo -e "Copying values from amount column to volume column..."
             sqlite3 "$DB_FILE" "UPDATE $TABLE_NAME SET volume = amount WHERE amount IS NOT NULL;"
             
-            if [ $? -eq 0 ]; then
+if [ $? -eq 0 ]; then
                 echo -e "${GREEN}Successfully copied amount values to volume column!${NC}"
             else
                 echo -e "${RED}Failed to copy values from amount to volume.${NC}"
             fi
-        else
+else
             echo -e "${YELLOW}Warning: amount column not found. volume column added with default values.${NC}"
         fi
     else

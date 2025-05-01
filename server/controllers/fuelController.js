@@ -1,4 +1,4 @@
-const { FuelTransaction, User, Vehicle } = require('../models/initModels');
+const { FuelTransaction, User } = require('../models/initModels');
 const { Op } = require('sequelize');
 const { sequelize } = require('../models/initModels');
 
@@ -85,11 +85,10 @@ exports.getTransactions = async (req, res) => {
       attributes: [
         'id', 'date', 'type', 'amount', 'volume', 'price', 
         'totalCost', 'fuelType', 'source', 'destination', 'notes', 
-        'timestamp', 'createdAt', 'updatedAt', 'userId', 'vehicleId'
+        'timestamp', 'createdAt', 'updatedAt', 'userId'
       ],
       include: [
-        { model: User, as: 'user', attributes: ['id', 'username', 'role'] },
-        { model: Vehicle, as: 'vehicle', attributes: ['id', 'name', 'registrationNumber'] }
+        { model: User, as: 'user', attributes: ['id', 'username', 'role'] }
       ]
     });
     
@@ -127,11 +126,10 @@ exports.getTransaction = async (req, res) => {
       attributes: [
         'id', 'date', 'type', 'amount', 'volume', 'price', 
         'totalCost', 'fuelType', 'source', 'destination', 'notes', 
-        'timestamp', 'createdAt', 'updatedAt', 'userId', 'vehicleId'
+        'timestamp', 'createdAt', 'updatedAt', 'userId'
       ],
       include: [
-        { model: User, as: 'user', attributes: ['id', 'username', 'role'] },
-        { model: Vehicle, as: 'vehicle', attributes: ['id', 'name', 'registrationNumber'] }
+        { model: User, as: 'user', attributes: ['id', 'username', 'role'] }
       ]
     });
     
@@ -312,11 +310,10 @@ exports.updateTransaction = async (req, res) => {
       attributes: [
         'id', 'date', 'type', 'amount', 'volume', 'price', 
         'totalCost', 'fuelType', 'source', 'destination', 'notes', 
-        'timestamp', 'createdAt', 'updatedAt', 'userId', 'vehicleId'
+        'timestamp', 'createdAt', 'updatedAt', 'userId'
       ],
       include: [
-        { model: User, as: 'user', attributes: ['id', 'username', 'role'] },
-        { model: Vehicle, as: 'vehicle', attributes: ['id', 'name', 'registrationNumber'] }
+        { model: User, as: 'user', attributes: ['id', 'username', 'role'] }
       ],
       transaction
     });

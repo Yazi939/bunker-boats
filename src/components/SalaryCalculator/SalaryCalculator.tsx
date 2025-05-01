@@ -1,648 +1,344 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Card, Table, Form, Input, Button, Select, Space, DatePicker, 
-  Divider, Statistic, Row, Col, notification, Modal, Typography 
+  Card, Form, Input, Button, DatePicker, Select, Table, Space, 
+  Typography, Row, Col, message, Statistic, Tag, Radio
 } from 'antd';
-import { 
-  PlusOutlined, DeleteOutlined, CalculatorOutlined, 
-  SaveOutlined, CheckCircleOutlined 
-} from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { SaveOutlined, DeleteOutlined, CalculatorOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { getCurrentUser, checkPermission } from '../../utils/users';
+import styles from './SalaryCalculator.module.css';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
-// Интерфейс для капитанов
-interface Captain {
-  id: string;
-  name: string;
-  experience: number; // лет опыта
-  baseRate: number; // рублей в час
-  fuelBonus: number; // процент от экономии топлива
-}
+const IconProps = {
+  onPointerEnterCapture: () => {},
+  onPointerLeaveCapture: () => {}
+};
 
-// Интерфейс для записи о рабочей смене
-interface Shift {
+interface Salary {
   id: string;
-  captainId: string;
+  employeeName: string;
   date: string;
   timestamp: number;
+  shiftType: 'day' | 'night';
   hoursWorked: number;
-  fuelSaved: number; // литров сэкономленного топлива
-  fuelPrice: number; // стоимость литра топлива
+  bonus: number;
+  baseSalary: number;
+  totalSalary: number;
   notes?: string;
 }
 
-// Интерфейс для расчета зарплаты
-interface SalaryRecord {
-  id: string;
-  captainId: string;
-  captainName: string;
-  period: string;
-  startDate: string;
-  endDate: string;
-  baseAmount: number;
-  bonusAmount: number;
-  totalAmount: number;
-  isPaid: boolean;
-  paymentDate?: string;
-}
-
-// Список капитанов (в реальном приложении это можно загрузить из API)
-const CAPTAINS: Captain[] = [
-  { id: 'c1', name: 'Иванов И.И.', experience: 5, baseRate: 300, fuelBonus: 10 },
-  { id: 'c2', name: 'Петров П.П.', experience: 3, baseRate: 250, fuelBonus: 8 },
-  { id: 'c3', name: 'Сидоров С.С.', experience: 7, baseRate: 350, fuelBonus: 12 },
-  { id: 'c4', name: 'Кузнецов К.К.', experience: 2, baseRate: 220, fuelBonus: 5 },
-];
-
 const SalaryCalculator: React.FC = () => {
-  const [form] = Form.useForm();
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [salaries, setSalaries] = useState<SalaryRecord[]>([]);
-  const [editingShift, setEditingShift] = useState<Shift | null>(null);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [salaries, setSalaries] = useState<Salary[]>([]);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
-  const [selectedCaptain, setSelectedCaptain] = useState<string | null>(null);
-  const [isCalculating, setIsCalculating] = useState(false);
-
-  // Загрузка данных из localStorage при первой загрузке
+  const [form] = Form.useForm();
+  const currentUser = getCurrentUser();
+  const canManageSalaries = checkPermission('canManageSalaries');
+  
+  // Базовые ставки оплаты
+  const DAY_SHIFT_RATE = 5500; // Дневная смена, рублей
+  const NIGHT_SHIFT_RATE = 6500; // Ночная смена, рублей
+  const HOUR_RATE = 500; // Почасовая ставка
+  
+  // Load salaries from localStorage
   useEffect(() => {
-    const savedShifts = localStorage.getItem('captainShifts');
-    const savedSalaries = localStorage.getItem('captainSalaries');
-    
-    if (savedShifts) {
-      setShifts(JSON.parse(savedShifts));
-    }
-    
+    const savedSalaries = localStorage.getItem('salaries');
     if (savedSalaries) {
       setSalaries(JSON.parse(savedSalaries));
     }
   }, []);
-
-  // Сохранение данных в localStorage при изменении
+  
+  // Save salaries to localStorage when they change
   useEffect(() => {
-    localStorage.setItem('captainShifts', JSON.stringify(shifts));
-  }, [shifts]);
-
-  useEffect(() => {
-    localStorage.setItem('captainSalaries', JSON.stringify(salaries));
+    localStorage.setItem('salaries', JSON.stringify(salaries));
   }, [salaries]);
-
-  // Фильтрация смен
-  const filteredShifts = shifts.filter(shift => {
-    let matchesDate = true;
-    let matchesCaptain = true;
+  
+  const handleSubmit = (values: any) => {
+    const { employeeName, date, shiftType, hoursWorked, notes } = values;
+    const hoursWorkedNum = parseFloat(hoursWorked) || 0;
+    const timestamp = date.valueOf();
     
-    if (dateRange && dateRange[0] && dateRange[1]) {
-      const shiftDate = shift.timestamp;
-      const startDate = dateRange[0].startOf('day').valueOf();
-      const endDate = dateRange[1].endOf('day').valueOf();
-      matchesDate = shiftDate >= startDate && shiftDate <= endDate;
-    }
+    // Base salary based on shift type
+    const baseSalary = shiftType === 'day' ? DAY_SHIFT_RATE : NIGHT_SHIFT_RATE;
     
-    if (selectedCaptain) {
-      matchesCaptain = shift.captainId === selectedCaptain;
-    }
+    // Bonus for extra hours
+    const standardHours = 8;
+    const extraHours = Math.max(0, hoursWorkedNum - standardHours);
+    const bonus = extraHours * HOUR_RATE;
     
-    return matchesDate && matchesCaptain;
+    // Total salary = base + bonus
+    const totalSalary = baseSalary + bonus;
+    
+    const newSalary: Salary = {
+      id: `salary-${Date.now()}`,
+      employeeName,
+      date: date.format('YYYY-MM-DD'),
+      timestamp,
+      shiftType,
+      hoursWorked: hoursWorkedNum,
+      bonus,
+      baseSalary,
+      totalSalary,
+      notes
+    };
+    
+    setSalaries([...salaries, newSalary]);
+    form.resetFields();
+    message.success('Зарплата рассчитана и добавлена');
+  };
+  
+  const handleDeleteSalary = (id: string) => {
+    setSalaries(salaries.filter(salary => salary.id !== id));
+    message.success('Запись зарплаты удалена');
+  };
+  
+  // Filter salaries based on date range
+  const filteredSalaries = salaries.filter(salary => {
+    if (!dateRange || !dateRange[0] || !dateRange[1]) return true;
+    
+    const salaryDate = salary.timestamp;
+    const startDate = dateRange[0].startOf('day').valueOf();
+    const endDate = dateRange[1].endOf('day').valueOf();
+    
+    return salaryDate >= startDate && salaryDate <= endDate;
   });
-
-  // Обработчики фильтрации
-  const handleDateRangeChange = (dates: any) => {
-    setDateRange(dates);
-  };
-
-  const handleCaptainChange = (value: string | null) => {
-    setSelectedCaptain(value);
-  };
-
-  const handleResetFilters = () => {
-    setDateRange(null);
-    setSelectedCaptain(null);
-  };
-
-  // Открытие модального окна для добавления/редактирования смены
-  const showModal = (shift?: Shift) => {
-    if (shift) {
-      setEditingShift(shift);
-      form.setFieldsValue({
-        captainId: shift.captainId,
-        date: dayjs(shift.date),
-        hoursWorked: shift.hoursWorked,
-        fuelSaved: shift.fuelSaved,
-        fuelPrice: shift.fuelPrice,
-        notes: shift.notes
-      });
-    } else {
-      setEditingShift(null);
-      form.resetFields();
-      // Установка текущей даты по умолчанию
-      form.setFieldsValue({
-        date: dayjs(),
-        fuelPrice: 50 // средняя цена по умолчанию
-      });
-    }
-    setIsModalVisible(true);
-  };
-
-  // Обработка сохранения смены
-  const handleSaveShift = () => {
-    form.validateFields().then(values => {
-      const formattedDate = values.date.format('YYYY-MM-DD');
-      
-      if (editingShift) {
-        // Обновление существующей смены
-        const updatedShifts = shifts.map(shift => 
-          shift.id === editingShift.id ? {
-            ...shift,
-            captainId: values.captainId,
-            date: formattedDate,
-            timestamp: values.date.valueOf(),
-            hoursWorked: parseFloat(values.hoursWorked),
-            fuelSaved: parseFloat(values.fuelSaved),
-            fuelPrice: parseFloat(values.fuelPrice),
-            notes: values.notes
-          } : shift
-        );
-        setShifts(updatedShifts);
-      } else {
-        // Добавление новой смены
-        const newShift: Shift = {
-          id: `shift-${Date.now()}`,
-          captainId: values.captainId,
-          date: formattedDate,
-          timestamp: values.date.valueOf(),
-          hoursWorked: parseFloat(values.hoursWorked),
-          fuelSaved: parseFloat(values.fuelSaved),
-          fuelPrice: parseFloat(values.fuelPrice),
-          notes: values.notes
-        };
-        setShifts([...shifts, newShift]);
-      }
-
-      setIsModalVisible(false);
-      form.resetFields();
-      notification.success({
-        message: editingShift ? 'Смена обновлена' : 'Смена добавлена',
-        description: `Данные ${editingShift ? 'обновлены' : 'добавлены'} успешно`
-      });
-    });
-  };
-
-  // Удаление смены
-  const handleDeleteShift = (id: string) => {
-    setShifts(shifts.filter(shift => shift.id !== id));
-    notification.info({
-      message: 'Смена удалена',
-      description: 'Запись о смене удалена из системы'
-    });
-  };
-
-  // Расчет зарплаты для выбранного капитана за период
-  const calculateSalary = () => {
-    if (!dateRange || !dateRange[0] || !dateRange[1] || !selectedCaptain) {
-      notification.warning({
-        message: 'Недостаточно данных',
-        description: 'Выберите капитана и период для расчета зарплаты'
-      });
-      return;
-    }
-    
-    setIsCalculating(true);
-    
-    try {
-      const startDate = dateRange[0].format('YYYY-MM-DD');
-      const endDate = dateRange[1].format('YYYY-MM-DD');
-      const startTimestamp = dateRange[0].startOf('day').valueOf();
-      const endTimestamp = dateRange[1].endOf('day').valueOf();
-      
-      // Отбор смен для выбранного капитана и периода
-      const captainShifts = shifts.filter(shift => 
-        shift.captainId === selectedCaptain && 
-        shift.timestamp >= startTimestamp && 
-        shift.timestamp <= endTimestamp
-      );
-      
-      if (captainShifts.length === 0) {
-        notification.warning({
-          message: 'Нет данных',
-          description: 'Для выбранного капитана и периода нет записей о сменах'
-        });
-        setIsCalculating(false);
-        return;
-      }
-      
-      const captain = CAPTAINS.find(c => c.id === selectedCaptain);
-      
-      if (!captain) {
-        notification.error({
-          message: 'Ошибка',
-          description: 'Капитан не найден'
-        });
-        setIsCalculating(false);
-        return;
-      }
-      
-      // Расчет базовой суммы (часы * ставка)
-      const totalHours = captainShifts.reduce((sum, shift) => sum + shift.hoursWorked, 0);
-      const baseAmount = totalHours * captain.baseRate;
-      
-      // Расчет бонуса за экономию топлива
-      let bonusAmount = 0;
-      captainShifts.forEach(shift => {
-        const fuelSavingValue = shift.fuelSaved * shift.fuelPrice; // стоимость сэкономленного топлива
-        const bonus = fuelSavingValue * (captain.fuelBonus / 100); // процент от экономии
-        bonusAmount += bonus;
-      });
-      
-      // Общая сумма зарплаты
-      const totalAmount = baseAmount + bonusAmount;
-      
-      // Создание записи о зарплате
-      const newSalaryRecord: SalaryRecord = {
-        id: `salary-${Date.now()}`,
-        captainId: captain.id,
-        captainName: captain.name,
-        period: `${startDate} - ${endDate}`,
-        startDate,
-        endDate,
-        baseAmount,
-        bonusAmount,
-        totalAmount,
-        isPaid: false
-      };
-      
-      setSalaries([...salaries, newSalaryRecord]);
-      
-      notification.success({
-        message: 'Зарплата рассчитана',
-        description: `Общая сумма: ${totalAmount.toFixed(2)} ₽`
-      });
-    } catch (error) {
-      notification.error({
-        message: 'Ошибка расчета',
-        description: 'Произошла ошибка при расчете зарплаты'
-      });
-      console.error('Error calculating salary:', error);
-    } finally {
-      setIsCalculating(false);
-    }
-  };
-
-  // Отметка зарплаты как выплаченной
-  const markAsPaid = (id: string) => {
-    const updatedSalaries = salaries.map(salary => 
-      salary.id === id ? {
-        ...salary,
-        isPaid: true,
-        paymentDate: new Date().toISOString().split('T')[0]
-      } : salary
-    );
-    
-    setSalaries(updatedSalaries);
-    
-    notification.success({
-      message: 'Зарплата выплачена',
-      description: 'Запись о выплате обновлена'
-    });
-  };
-
-  // Получение статистики по расходам
-  const getTotalSalaryExpenses = () => {
-    const paid = salaries
-      .filter(s => s.isPaid)
-      .reduce((sum, s) => sum + s.totalAmount, 0);
-    
-    const pending = salaries
-      .filter(s => !s.isPaid)
-      .reduce((sum, s) => sum + s.totalAmount, 0);
-    
-    return { paid, pending, total: paid + pending };
-  };
-
-  const { paid, pending, total } = getTotalSalaryExpenses();
-
-  // Колонки для таблицы смен
-  const shiftColumns: ColumnsType<Shift> = [
+  
+  // Calculate totals
+  const totalBaseSalary = filteredSalaries.reduce((sum, salary) => sum + salary.baseSalary, 0);
+  const totalBonus = filteredSalaries.reduce((sum, salary) => sum + salary.bonus, 0);
+  const totalSalary = filteredSalaries.reduce((sum, salary) => sum + salary.totalSalary, 0);
+  const dayShifts = filteredSalaries.filter(salary => salary.shiftType === 'day').length;
+  const nightShifts = filteredSalaries.filter(salary => salary.shiftType === 'night').length;
+  
+  const columns: ColumnsType<Salary> = [
+    {
+      title: 'Сотрудник',
+      dataIndex: 'employeeName',
+      key: 'employeeName',
+    },
     {
       title: 'Дата',
       dataIndex: 'date',
       key: 'date',
-      sorter: (a, b) => a.timestamp - b.timestamp,
+      sorter: (a: Salary, b: Salary) => a.timestamp - b.timestamp,
     },
     {
-      title: 'Капитан',
-      key: 'captainId',
-      render: (_, record) => {
-        const captain = CAPTAINS.find(c => c.id === record.captainId);
-        return captain ? captain.name : 'Неизвестный капитан';
-      },
-      filters: CAPTAINS.map(c => ({ text: c.name, value: c.id })),
-      onFilter: (value, record) => record.captainId === value,
-    },
-    {
-      title: 'Часы работы',
-      dataIndex: 'hoursWorked',
-      key: 'hoursWorked',
-      render: (hours) => `${hours} ч`,
-      sorter: (a, b) => a.hoursWorked - b.hoursWorked,
-    },
-    {
-      title: 'Экономия топлива',
-      dataIndex: 'fuelSaved',
-      key: 'fuelSaved',
-      render: (fuel) => `${fuel} л`,
-      sorter: (a, b) => a.fuelSaved - b.fuelSaved,
-    },
-    {
-      title: 'Цена топлива',
-      dataIndex: 'fuelPrice',
-      key: 'fuelPrice',
-      render: (price) => `${price} ₽/л`,
-    },
-    {
-      title: 'Стоимость экономии',
-      key: 'savingValue',
-      render: (_, record) => `${(record.fuelSaved * record.fuelPrice).toFixed(2)} ₽`,
-      sorter: (a, b) => (a.fuelSaved * a.fuelPrice) - (b.fuelSaved * b.fuelPrice),
-    },
-    {
-      title: 'Примечания',
-      dataIndex: 'notes',
-      key: 'notes',
-      ellipsis: true,
-    },
-    {
-      title: 'Действия',
-      key: 'actions',
-      render: (_, record) => (
-        <Space>
-          <Button 
-            type="text" 
-            icon={<DeleteOutlined />} 
-            onClick={() => handleDeleteShift(record.id)}
-            danger
-          />
-          <Button 
-            type="text" 
-            icon={<CalculatorOutlined />} 
-            onClick={() => showModal(record)}
-          />
-        </Space>
-      ),
-    },
-  ];
-
-  // Колонки для таблицы зарплат
-  const salaryColumns: ColumnsType<SalaryRecord> = [
-    {
-      title: 'Капитан',
-      dataIndex: 'captainName',
-      key: 'captainName',
-    },
-    {
-      title: 'Период',
-      dataIndex: 'period',
-      key: 'period',
-    },
-    {
-      title: 'Базовая оплата',
-      dataIndex: 'baseAmount',
-      key: 'baseAmount',
-      render: (amount) => `${amount.toFixed(2)} ₽`,
-      sorter: (a, b) => a.baseAmount - b.baseAmount,
-    },
-    {
-      title: 'Бонус за экономию',
-      dataIndex: 'bonusAmount',
-      key: 'bonusAmount',
-      render: (amount) => `${amount.toFixed(2)} ₽`,
-      sorter: (a, b) => a.bonusAmount - b.bonusAmount,
-    },
-    {
-      title: 'Итого',
-      dataIndex: 'totalAmount',
-      key: 'totalAmount',
-      render: (amount) => `${amount.toFixed(2)} ₽`,
-      sorter: (a, b) => a.totalAmount - b.totalAmount,
-    },
-    {
-      title: 'Статус',
-      key: 'status',
-      render: (_, record) => (
-        <span style={{ 
-          color: record.isPaid ? '#52c41a' : '#faad14',
-          fontWeight: 'bold'
-        }}>
-          {record.isPaid ? 'Выплачено' : 'Ожидает выплаты'}
-        </span>
+      title: 'Тип смены',
+      dataIndex: 'shiftType',
+      key: 'shiftType',
+      render: (shiftType: 'day' | 'night') => (
+        <Tag color={shiftType === 'day' ? 'blue' : 'purple'}>
+          {shiftType === 'day' ? 'Дневная' : 'Ночная'}
+        </Tag>
       ),
       filters: [
-        { text: 'Выплачено', value: true },
-        { text: 'Ожидает выплаты', value: false },
+        { text: 'Дневная', value: 'day' },
+        { text: 'Ночная', value: 'night' }
       ],
-      onFilter: (value, record) => record.isPaid === value,
+      onFilter: (value, record) => record.shiftType === value.toString(),
     },
     {
-      title: 'Дата выплаты',
-      dataIndex: 'paymentDate',
-      key: 'paymentDate',
-      render: (date) => date || '-',
+      title: 'Отработано часов',
+      dataIndex: 'hoursWorked',
+      key: 'hoursWorked',
+      render: (val: number) => val.toFixed(1),
+    },
+    {
+      title: 'Базовая ставка (₽)',
+      dataIndex: 'baseSalary',
+      key: 'baseSalary',
+      render: (val: number) => val.toFixed(2),
+    },
+    {
+      title: 'Бонус (₽)',
+      dataIndex: 'bonus',
+      key: 'bonus',
+      render: (val: number) => val.toFixed(2),
+    },
+    {
+      title: 'Итого (₽)',
+      dataIndex: 'totalSalary',
+      key: 'totalSalary',
+      render: (val: number) => val.toFixed(2),
     },
     {
       title: 'Действия',
       key: 'actions',
-      render: (_, record) => (
+      render: (_: any, record: Salary) => (
         <Button 
-          type="primary" 
-          icon={<CheckCircleOutlined />}
-          onClick={() => markAsPaid(record.id)}
-          disabled={record.isPaid}
-        >
-          Отметить как выплаченную
-        </Button>
+          icon={<DeleteOutlined {...IconProps} />} 
+          danger
+          size="small" 
+          onClick={() => handleDeleteSalary(record.id)}
+          disabled={!checkPermission('canManageSalaries')}
+        />
       ),
     },
   ];
-
+  
+  // If user doesn't have permission
+  if (!canManageSalaries && currentUser?.role !== 'worker') {
+    return (
+      <Card>
+        <Title level={4}>Доступ запрещен</Title>
+        <p>У вас нет прав для расчёта заработной платы.</p>
+      </Card>
+    );
+  }
+  
   return (
-    <div style={{ padding: '24px' }}>
-      <Row justify="space-between" align="middle" style={{ marginBottom: '24px' }}>
-        <Title level={2}>Расчет зарплаты капитанов</Title>
-        <Space>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
-            onClick={() => showModal()}
-          >
-            Добавить смену
-          </Button>
-        </Space>
-      </Row>
-
+    <div className={styles.salaryCalculator}>
+      <Title level={3}>Расчёт заработной платы сотрудников</Title>
+      
       <Row gutter={[16, 16]}>
-        <Col span={8}>
-          <Card>
-            <Statistic
-              title="Общие расходы на зарплату"
-              value={total}
-              precision={2}
-              suffix="₽"
-              valueStyle={{ color: '#1890ff' }}
-            />
-            <div style={{ fontSize: '14px', marginTop: '8px' }}>
-              Всего капитанов: {CAPTAINS.length}
-            </div>
+        <Col xs={24} lg={16}>
+          <Card title="Добавить рабочую смену" className={styles.addSalaryCard}>
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleSubmit}
+              initialValues={{
+                date: dayjs(),
+                shiftType: 'day',
+                hoursWorked: 8
+              }}
+            >
+              <Row gutter={16}>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="employeeName"
+                    label="Имя сотрудника"
+                    rules={[{ required: true, message: 'Введите имя сотрудника' }]}
+                  >
+                    <Input placeholder="Ф.И.О." />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="date"
+                    label="Дата"
+                    rules={[{ required: true, message: 'Укажите дату' }]}
+                  >
+                    <DatePicker style={{ width: '100%' }} format="DD.MM.YYYY" />
+                  </Form.Item>
+                </Col>
+              </Row>
+              
+              <Row gutter={16}>
+                <Col xs={24} md={8}>
+                  <Form.Item
+                    name="shiftType"
+                    label="Тип смены"
+                    rules={[{ required: true, message: 'Выберите тип смены' }]}
+                  >
+                    <Radio.Group>
+                      <Radio.Button value="day">Дневная</Radio.Button>
+                      <Radio.Button value="night">Ночная</Radio.Button>
+                    </Radio.Group>
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={8}>
+                  <Form.Item
+                    name="hoursWorked"
+                    label="Отработано часов"
+                    rules={[{ required: true, message: 'Укажите количество часов' }]}
+                  >
+                    <Input type="number" min="0" step="0.5" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={8}>
+                  <Form.Item name="notes" label="Примечания">
+                    <Input placeholder="Дополнительная информация" />
+                  </Form.Item>
+                </Col>
+              </Row>
+              
+              <Form.Item>
+                <Button 
+                  type="primary" 
+                  htmlType="submit" 
+                  icon={<CalculatorOutlined {...IconProps} />}
+                >
+                  Рассчитать и добавить
+                </Button>
+              </Form.Item>
+            </Form>
           </Card>
         </Col>
-        <Col span={8}>
-          <Card>
+        
+        <Col xs={24} lg={8}>
+          <Card title="Общая статистика">
             <Statistic
-              title="Выплачено"
-              value={paid}
+              title="Суммарная заработная плата"
+              value={totalSalary}
               precision={2}
               suffix="₽"
-              valueStyle={{ color: '#52c41a' }}
+              valueStyle={{ color: '#3f8600' }}
             />
-            <div style={{ fontSize: '14px', marginTop: '8px' }}>
-              Количество выплат: {salaries.filter(s => s.isPaid).length}
-            </div>
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card>
             <Statistic
-              title="Ожидает выплаты"
-              value={pending}
+              title="Базовая зарплата"
+              value={totalBaseSalary}
               precision={2}
               suffix="₽"
-              valueStyle={{ color: pending > 0 ? '#faad14' : '#52c41a' }}
+              style={{ marginTop: 16 }}
             />
-            <div style={{ fontSize: '14px', marginTop: '8px' }}>
-              Ожидающих выплат: {salaries.filter(s => !s.isPaid).length}
-            </div>
+            <Statistic
+              title="Бонусы"
+              value={totalBonus}
+              precision={2}
+              suffix="₽"
+              style={{ marginTop: 16 }}
+            />
+            <Divider />
+            <Space>
+              <Statistic title="Дневных смен" value={dayShifts} />
+              <Statistic title="Ночных смен" value={nightShifts} />
+            </Space>
           </Card>
         </Col>
       </Row>
-
-      <Card style={{ marginTop: '24px' }}>
-        <div style={{ marginBottom: '16px' }}>
+      
+      <Card title="Журнал расчёта зарплат" style={{ marginTop: 16 }}>
+        <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
           <Space>
-            <RangePicker 
-              value={dateRange} 
-              onChange={handleDateRangeChange}
-              placeholder={['Начало', 'Конец']} 
-            />
-            <Select
-              allowClear
-              placeholder="Выберите капитана"
-              style={{ width: 200 }}
-              onChange={handleCaptainChange}
-              value={selectedCaptain}
-            >
-              {CAPTAINS.map(captain => (
-                <Option key={captain.id} value={captain.id}>{captain.name}</Option>
-              ))}
-            </Select>
-            <Button onClick={handleResetFilters}>Сбросить фильтры</Button>
+            <Text>Фильтр по периоду:</Text>
+            <RangePicker onChange={(dates) => setDateRange(dates)} value={dateRange} />
             <Button 
-              type="primary" 
-              onClick={calculateSalary}
-              disabled={!dateRange || !selectedCaptain || isCalculating}
-              loading={isCalculating}
-              icon={<CalculatorOutlined />}
+              onClick={() => setDateRange(null)}
+              style={{ marginLeft: 8 }}
             >
-              Рассчитать зарплату
+              Сбросить
             </Button>
           </Space>
-        </div>
-
+        </Space>
+        
         <Table 
-          dataSource={filteredShifts} 
-          columns={shiftColumns} 
+          columns={columns} 
+          dataSource={filteredSalaries} 
           rowKey="id"
           pagination={{ pageSize: 10 }}
+          summary={() => (
+            <Table.Summary fixed>
+              <Table.Summary.Row>
+                <Table.Summary.Cell index={0} colSpan={4}><strong>Итого:</strong></Table.Summary.Cell>
+                <Table.Summary.Cell index={1}>
+                  <strong>{totalBaseSalary.toFixed(2)}₽</strong>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={2}>
+                  <strong>{totalBonus.toFixed(2)}₽</strong>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={3}>
+                  <strong>{totalSalary.toFixed(2)}₽</strong>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={4} />
+              </Table.Summary.Row>
+            </Table.Summary>
+          )}
         />
       </Card>
-
-      <Divider>
-        <Title level={4}>История расчетов зарплаты</Title>
-      </Divider>
-
-      <Table 
-        dataSource={salaries} 
-        columns={salaryColumns} 
-        rowKey="id"
-        pagination={{ pageSize: 10 }}
-      />
-
-      <Modal
-        title={editingShift ? "Редактировать смену" : "Добавить новую смену"}
-        open={isModalVisible}
-        onOk={handleSaveShift}
-        onCancel={() => setIsModalVisible(false)}
-        okText="Сохранить"
-        cancelText="Отмена"
-      >
-        <Form
-          form={form}
-          layout="vertical"
-        >
-          <Form.Item
-            name="captainId"
-            label="Капитан"
-            rules={[{ required: true, message: 'Выберите капитана' }]}
-          >
-            <Select placeholder="Выберите капитана">
-              {CAPTAINS.map(captain => (
-                <Option key={captain.id} value={captain.id}>{captain.name}</Option>
-              ))}
-            </Select>
-          </Form.Item>
-          
-          <Form.Item
-            name="date"
-            label="Дата"
-            rules={[{ required: true, message: 'Укажите дату' }]}
-          >
-            <DatePicker style={{ width: '100%' }} />
-          </Form.Item>
-          
-          <Form.Item
-            name="hoursWorked"
-            label="Часы работы"
-            rules={[{ required: true, message: 'Укажите количество часов' }]}
-          >
-            <Input type="number" min="0" step="0.5" placeholder="Введите количество часов" />
-          </Form.Item>
-          
-          <Form.Item
-            name="fuelSaved"
-            label="Экономия топлива (л)"
-            rules={[{ required: true, message: 'Укажите объем сэкономленного топлива' }]}
-          >
-            <Input type="number" min="0" step="0.1" placeholder="Введите объем экономии" />
-          </Form.Item>
-          
-          <Form.Item
-            name="fuelPrice"
-            label="Цена топлива (₽/л)"
-            rules={[{ required: true, message: 'Укажите цену топлива' }]}
-          >
-            <Input type="number" min="0" step="0.1" placeholder="Введите цену топлива" />
-          </Form.Item>
-          
-          <Form.Item
-            name="notes"
-            label="Примечания"
-          >
-            <Input.TextArea rows={4} placeholder="Дополнительная информация" />
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   );
 };

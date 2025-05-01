@@ -51,45 +51,46 @@ User.prototype.matchPassword = async function(enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
-const Vehicle = sequelize.define('Vehicle', {
-    name: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        validate: {
-            notEmpty: { msg: 'Пожалуйста, укажите название транспортного средства' }
-        }
-    },
-    type: {
-        type: DataTypes.ENUM('boat', 'car', 'truck', 'other'),
-        defaultValue: 'boat'
-    },
-    registrationNumber: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true,
-        validate: {
-            notEmpty: { msg: 'Пожалуйста, укажите регистрационный номер' }
-        }
-    },
-    fuelCapacity: {
-        type: DataTypes.FLOAT,
-        allowNull: false,
-        validate: {
-            min: { args: [0], msg: 'Объем топливного бака должен быть положительным числом' }
-        }
-    },
-    fuelConsumption: {
-        type: DataTypes.FLOAT,
-        allowNull: false,
-        validate: {
-            min: { args: [0], msg: 'Расход топлива должен быть положительным числом' }
-        }
-    },
-    isActive: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: true
-    }
-});
+// Удаляем модель Vehicle
+// const Vehicle = sequelize.define('Vehicle', {
+//     name: {
+//         type: DataTypes.STRING,
+//         allowNull: false,
+//         validate: {
+//             notEmpty: { msg: 'Пожалуйста, укажите название транспортного средства' }
+//         }
+//     },
+//     type: {
+//         type: DataTypes.ENUM('boat', 'car', 'truck', 'other'),
+//         defaultValue: 'boat'
+//     },
+//     registrationNumber: {
+//         type: DataTypes.STRING,
+//         allowNull: false,
+//         unique: true,
+//         validate: {
+//             notEmpty: { msg: 'Пожалуйста, укажите регистрационный номер' }
+//         }
+//     },
+//     fuelCapacity: {
+//         type: DataTypes.FLOAT,
+//         allowNull: false,
+//         validate: {
+//             min: { args: [0], msg: 'Объем топливного бака должен быть положительным числом' }
+//         }
+//     },
+//     fuelConsumption: {
+//         type: DataTypes.FLOAT,
+//         allowNull: false,
+//         validate: {
+//             min: { args: [0], msg: 'Расход топлива должен быть положительным числом' }
+//         }
+//     },
+//     isActive: {
+//         type: DataTypes.BOOLEAN,
+//         defaultValue: true
+//     }
+// });
 
 const Shift = sequelize.define('Shift', {
     startDate: {
@@ -139,7 +140,7 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
         defaultValue: DataTypes.NOW
     },
     type: {
-        type: DataTypes.ENUM('purchase', 'sale', 'drain', 'base_to_bunker', 'bunker_to_base'),
+        type: DataTypes.ENUM('purchase', 'sale', 'drain', 'base_to_bunker', 'bunker_to_base', 'salary', 'expense', 'repair'),
         allowNull: false
     },
     amount: {
@@ -263,14 +264,17 @@ const FuelTransaction = sequelize.define('FuelTransaction', {
 User.hasMany(FuelTransaction, { foreignKey: 'userId' });
 FuelTransaction.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
-Vehicle.hasMany(FuelTransaction, { foreignKey: 'vehicleId' });
-FuelTransaction.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
+// Удаляем связи с Vehicle
+// Vehicle.hasMany(FuelTransaction, { foreignKey: 'vehicleId' });
+// FuelTransaction.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
 
 Shift.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-Shift.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
+// Удаляем связь Shift с Vehicle
+// Shift.belongsTo(Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
 
 // Синхронизируем модели с базой данных
 // Закомментировано, так как синхронизация происходит в server.js
 // sequelize.sync();
 
-module.exports = { User, Vehicle, Shift, FuelTransaction, sequelize }; 
+// Удаляем экспорт Vehicle
+module.exports = { User, Shift, FuelTransaction, sequelize }; 
